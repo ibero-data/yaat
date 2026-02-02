@@ -1,0 +1,208 @@
+package bot
+
+import (
+	"encoding/json"
+	"strings"
+)
+
+// Bot categories
+const (
+	CategoryHuman      = "human"
+	CategorySuspicious = "suspicious"
+	CategoryBadBot     = "bad_bot"
+	CategoryGoodBot    = "good_bot"
+)
+
+// Signal weights for bot scoring
+const (
+	WeightWebdriver       = 30 // navigator.webdriver detected
+	WeightHeadlessBrowser = 25 // HeadlessChrome, Phantom
+	WeightEmptyUA         = 20 // No User-Agent header
+	WeightMissingHeaders  = 15 // No Accept-Language/Encoding
+	WeightDatacenterIP    = 15 // AWS, GCP, Azure ranges
+	WeightKnownBot        = 40 // Known bot UA (treated as good_bot)
+	WeightAutomationUA    = 35 // puppeteer, selenium
+	WeightShortUA         = 10 // <50 chars, no browser indicator
+	WeightScreenAnomaly   = 15 // 0x0 or impossible values
+	WeightTimezoneMismatch = 10 // Client TZ != IP geo TZ
+	WeightNoPlugins       = 5  // No plugins detected
+	WeightNoLanguages     = 5  // No languages array
+)
+
+// Signal represents a detected bot signal
+type Signal struct {
+	Name   string `json:"name"`
+	Weight int    `json:"weight"`
+	Value  string `json:"value,omitempty"`
+}
+
+// ScoringResult contains the bot score and signals
+type ScoringResult struct {
+	Score    int      `json:"score"`
+	Category string   `json:"category"`
+	Signals  []Signal `json:"signals"`
+	IsBot    bool     `json:"is_bot"`
+}
+
+// ClientSignals contains bot detection signals from the client
+type ClientSignals struct {
+	Webdriver   bool `json:"webdriver"`
+	Phantom     bool `json:"phantom"`
+	Selenium    bool `json:"selenium"`
+	Headless    bool `json:"headless"`
+	ScreenValid bool `json:"screen_valid"`
+	Plugins     int  `json:"plugins"`
+	Languages   int  `json:"languages"`
+	ScreenWidth int  `json:"screen_width"`
+	ScreenHeight int `json:"screen_height"`
+}
+
+// CalculateScore computes the bot score based on various signals
+func CalculateScore(userAgent string, clientSignals *ClientSignals, isDatacenterIP bool, headers map[string]string) *ScoringResult {
+	result := &ScoringResult{
+		Score:    0,
+		Category: CategoryHuman,
+		Signals:  make([]Signal, 0),
+	}
+
+	ua := strings.ToLower(userAgent)
+
+	// Check for known good bots first
+	if IsGoodBot(userAgent) {
+		result.Score = 0
+		result.Category = CategoryGoodBot
+		result.Signals = append(result.Signals, Signal{
+			Name:   "known_good_bot",
+			Weight: 0,
+			Value:  GetGoodBotName(userAgent),
+		})
+		result.IsBot = true
+		return result
+	}
+
+	// Check User-Agent signals
+	if userAgent == "" {
+		result.Score += WeightEmptyUA
+		result.Signals = append(result.Signals, Signal{Name: "empty_ua", Weight: WeightEmptyUA})
+	} else {
+		// Check for automation tools
+		automationPatterns := []string{"puppeteer", "selenium", "webdriver", "playwright", "cypress"}
+		for _, pattern := range automationPatterns {
+			if strings.Contains(ua, pattern) {
+				result.Score += WeightAutomationUA
+				result.Signals = append(result.Signals, Signal{Name: "automation_ua", Weight: WeightAutomationUA, Value: pattern})
+				break
+			}
+		}
+
+		// Check for headless browsers
+		if strings.Contains(ua, "headlesschrome") || strings.Contains(ua, "phantomjs") {
+			result.Score += WeightHeadlessBrowser
+			result.Signals = append(result.Signals, Signal{Name: "headless_browser", Weight: WeightHeadlessBrowser})
+		}
+
+		// Check for short/suspicious UA
+		if len(userAgent) < 50 && !hasBrowserIndicator(ua) {
+			result.Score += WeightShortUA
+			result.Signals = append(result.Signals, Signal{Name: "short_ua", Weight: WeightShortUA})
+		}
+	}
+
+	// Check client-side signals
+	if clientSignals != nil {
+		if clientSignals.Webdriver {
+			result.Score += WeightWebdriver
+			result.Signals = append(result.Signals, Signal{Name: "webdriver", Weight: WeightWebdriver})
+		}
+
+		if clientSignals.Phantom {
+			result.Score += WeightHeadlessBrowser
+			result.Signals = append(result.Signals, Signal{Name: "phantom", Weight: WeightHeadlessBrowser})
+		}
+
+		if clientSignals.Selenium {
+			result.Score += WeightAutomationUA
+			result.Signals = append(result.Signals, Signal{Name: "selenium", Weight: WeightAutomationUA})
+		}
+
+		if clientSignals.Headless {
+			result.Score += WeightHeadlessBrowser
+			result.Signals = append(result.Signals, Signal{Name: "headless", Weight: WeightHeadlessBrowser})
+		}
+
+		// Screen anomaly detection
+		if !clientSignals.ScreenValid || clientSignals.ScreenWidth == 0 || clientSignals.ScreenHeight == 0 {
+			result.Score += WeightScreenAnomaly
+			result.Signals = append(result.Signals, Signal{Name: "screen_anomaly", Weight: WeightScreenAnomaly})
+		}
+
+		// No plugins (common in headless browsers)
+		if clientSignals.Plugins == 0 {
+			result.Score += WeightNoPlugins
+			result.Signals = append(result.Signals, Signal{Name: "no_plugins", Weight: WeightNoPlugins})
+		}
+
+		// No languages
+		if clientSignals.Languages == 0 {
+			result.Score += WeightNoLanguages
+			result.Signals = append(result.Signals, Signal{Name: "no_languages", Weight: WeightNoLanguages})
+		}
+	}
+
+	// Check for datacenter IP
+	if isDatacenterIP {
+		result.Score += WeightDatacenterIP
+		result.Signals = append(result.Signals, Signal{Name: "datacenter_ip", Weight: WeightDatacenterIP})
+	}
+
+	// Check for missing headers
+	if headers != nil {
+		if _, ok := headers["Accept-Language"]; !ok {
+			result.Score += WeightMissingHeaders
+			result.Signals = append(result.Signals, Signal{Name: "missing_accept_language", Weight: WeightMissingHeaders})
+		}
+	}
+
+	// Cap score at 100
+	if result.Score > 100 {
+		result.Score = 100
+	}
+
+	// Determine category based on score
+	result.Category = ScoreToCategory(result.Score)
+	result.IsBot = result.Score > 50
+
+	return result
+}
+
+// ScoreToCategory converts a score to a category
+func ScoreToCategory(score int) string {
+	switch {
+	case score <= 20:
+		return CategoryHuman
+	case score <= 50:
+		return CategorySuspicious
+	default:
+		return CategoryBadBot
+	}
+}
+
+// SignalsToJSON converts signals to JSON string
+func SignalsToJSON(signals []Signal) string {
+	data, err := json.Marshal(signals)
+	if err != nil {
+		return "[]"
+	}
+	return string(data)
+}
+
+// hasBrowserIndicator checks if UA contains browser indicators
+func hasBrowserIndicator(ua string) bool {
+	indicators := []string{"mozilla", "chrome", "safari", "firefox", "edge", "opera"}
+	for _, indicator := range indicators {
+		if strings.Contains(ua, indicator) {
+			return true
+		}
+	}
+	return false
+}

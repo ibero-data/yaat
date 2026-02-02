@@ -1,0 +1,57 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Data
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/GeoLite2-City.mmdb
+data/license.json
+
+# Config (contains secrets)
+config.json
+.env
+.env.*
+
+# Keys
+keys/
+*.key
+!public.key
+
+# Go
+go.sum
+
+# Node
+ui/node_modules/
+ui/dist/
+ui/.vite/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test
+coverage/
+*.test
+
+keys/
+data/
+
+cmd/licensegen
+generated_licenses/
+
+/gen_license.md
