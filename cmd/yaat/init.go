@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -192,16 +194,71 @@ func runInit(cmd *cobra.Command, args []string) {
 	// Save listen address
 	settingsSvc.Set("listen_addr", listenAddr)
 
+	// Domain setup
+	fmt.Println("\n--- Domain Configuration ---")
+	fmt.Print("What domain will you track? (e.g., example.com): ")
+	domainName, _ := reader.ReadString('\n')
+	domainName = strings.TrimSpace(domainName)
+
+	var siteID string
+	if domainName != "" {
+		// Clean domain (remove protocol if present)
+		domainName = strings.TrimPrefix(domainName, "https://")
+		domainName = strings.TrimPrefix(domainName, "http://")
+		domainName = strings.TrimSuffix(domainName, "/")
+
+		// Generate IDs
+		domainID := auth.GenerateID()
+		siteID = "site_" + generateRandomID()[:16]
+		now := time.Now().UnixMilli()
+
+		_, err = db.Conn().Exec(
+			"INSERT INTO domains (id, name, domain, site_id, created_by, created_at, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)",
+			domainID, domainName, domainName, siteID, userID, now,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE constraint") {
+				fmt.Println("Domain already exists, skipping.")
+			} else {
+				log.Printf("Warning: Failed to create domain: %v", err)
+			}
+		} else {
+			fmt.Printf("Domain '%s' added successfully.\n", domainName)
+		}
+	}
+
 	fmt.Println("\n===========================================")
 	fmt.Println("  Setup Complete!")
 	fmt.Println("===========================================")
 	fmt.Println()
 	fmt.Printf("Data directory: %s\n", dataDir)
 	fmt.Printf("Admin email: %s\n", email)
+	if domainName != "" {
+		fmt.Printf("Domain: %s\n", domainName)
+	}
 	fmt.Println()
+
+	if siteID != "" {
+		fmt.Println("Add this tracking snippet to your website:")
+		fmt.Println()
+		fmt.Println("  <script")
+		fmt.Println("    defer")
+		fmt.Printf("    data-site=\"%s\"\n", siteID)
+		fmt.Printf("    src=\"http://localhost%s/js/script.js\"\n", listenAddr)
+		fmt.Println("  ></script>")
+		fmt.Println()
+	}
+
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Run 'yaat serve' to start the server")
 	fmt.Printf("  2. Open http://localhost%s in your browser\n", listenAddr)
 	fmt.Println("  3. Log in with your admin credentials")
 	fmt.Println()
+}
+
+// generateRandomID generates a random hex ID
+func generateRandomID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

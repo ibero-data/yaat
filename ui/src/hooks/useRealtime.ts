@@ -23,7 +23,7 @@ export function useRealtime() {
       eventSource.close()
     }
 
-    const es = new EventSource('/api/events/stream')
+    const es = new EventSource('/api/events/stream', { withCredentials: true })
 
     es.onopen = () => {
       setConnected(true)

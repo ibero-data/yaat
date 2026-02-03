@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -21,6 +24,8 @@ import (
 	"github.com/yaat/yaat-/ui"
 )
 
+var detach bool
+
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the YAAT  server",
@@ -28,7 +33,52 @@ var serveCmd = &cobra.Command{
 	Run:   runServe,
 }
 
+func init() {
+	serveCmd.Flags().BoolVar(&detach, "detach", false, "Run server in background (detached mode)")
+}
+
 func runServe(cmd *cobra.Command, args []string) {
+	// Handle detach mode - fork to background
+	if detach {
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			log.Fatalf("Failed to create data directory: %v", err)
+		}
+
+		// Build command without -d flag
+		execPath, err := os.Executable()
+		if err != nil {
+			log.Fatalf("Failed to get executable path: %v", err)
+		}
+
+		cmdArgs := []string{"serve", "-d=false", "--data", dataDir, "--listen", listenAddr}
+		child := exec.Command(execPath, cmdArgs...)
+
+		// Redirect output to log file
+		logPath := filepath.Join(dataDir, "yaat.log")
+		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			log.Fatalf("Failed to open log file: %v", err)
+		}
+		child.Stdout = logFile
+		child.Stderr = logFile
+
+		// Start detached process
+		if err := child.Start(); err != nil {
+			log.Fatalf("Failed to start background process: %v", err)
+		}
+
+		// Write PID file
+		pidPath := filepath.Join(dataDir, "yaat.pid")
+		if err := os.WriteFile(pidPath, []byte(fmt.Sprintf("%d", child.Process.Pid)), 0644); err != nil {
+			log.Printf("Warning: Failed to write PID file: %v", err)
+		}
+
+		fmt.Printf("YAAT started in background (PID: %d)\n", child.Process.Pid)
+		fmt.Printf("Log file: %s\n", logPath)
+		fmt.Printf("PID file: %s\n", pidPath)
+		return
+	}
+
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
