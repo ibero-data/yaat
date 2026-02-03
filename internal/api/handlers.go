@@ -314,9 +314,9 @@ func (h *Handlers) parseEvent(raw map[string]interface{}, sessionID string, enri
 	if name, ok := raw["event_name"].(string); ok {
 		event.EventName = &name
 	}
-	if ref, ok := raw["referrer_url"].(string); ok {
+	if ref, ok := raw["referrer_url"].(string); ok && ref != "" {
 		event.ReferrerURL = &ref
-		refType := enriched.ReferrerType
+		refType := enrichment.ClassifyReferrer(ref)
 		event.ReferrerType = &refType
 	}
 	if utm, ok := raw["utm_source"].(string); ok {
@@ -641,9 +641,8 @@ func (h *Handlers) GetStatsSummary(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsOverview returns main dashboard stats
 func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 	live := time.Now().Add(-5 * time.Minute).UnixMilli()
 
 	var totalEvents, uniqueVisitors, sessions, pageviews, liveVisitors int64
@@ -652,10 +651,10 @@ func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
 
 	// Filter out bots (is_bot = 0)
 	if domain != "" {
-		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND domain = ? AND is_bot = 0", cutoff, domain).Scan(&totalEvents)
-		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT visitor_hash) FROM events WHERE timestamp >= ? AND domain = ? AND is_bot = 0", cutoff, domain).Scan(&uniqueVisitors)
-		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND domain = ? AND is_bot = 0", cutoff, domain).Scan(&sessions)
-		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0", cutoff, domain).Scan(&pageviews)
+		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0", startMs, endMs, domain).Scan(&totalEvents)
+		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT visitor_hash) FROM events WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0", startMs, endMs, domain).Scan(&uniqueVisitors)
+		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0", startMs, endMs, domain).Scan(&sessions)
+		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0", startMs, endMs, domain).Scan(&pageviews)
 		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND domain = ? AND is_bot = 0", live, domain).Scan(&liveVisitors)
 
 		// Bounce rate: sessions with only 1 pageview / total sessions
@@ -666,10 +665,10 @@ func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
 			) FROM (
 				SELECT session_id, COUNT(*) as pv_count
 				FROM events
-				WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
+				WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
 				GROUP BY session_id
 			)
-		`, cutoff, domain).Scan(&bounceRate)
+		`, startMs, endMs, domain).Scan(&bounceRate)
 
 		// Average session duration from engagement events
 		h.db.Conn().QueryRow(`
@@ -677,13 +676,13 @@ func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
 				CAST(json_extract(props, '$.visible_time_ms') AS INTEGER)
 			), 0) / 1000.0
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'engagement' AND domain = ? AND is_bot = 0
-		`, cutoff, domain).Scan(&avgDuration)
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'engagement' AND domain = ? AND is_bot = 0
+		`, startMs, endMs, domain).Scan(&avgDuration)
 	} else {
-		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND is_bot = 0", cutoff).Scan(&totalEvents)
-		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT visitor_hash) FROM events WHERE timestamp >= ? AND is_bot = 0", cutoff).Scan(&uniqueVisitors)
-		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND is_bot = 0", cutoff).Scan(&sessions)
-		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0", cutoff).Scan(&pageviews)
+		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0", startMs, endMs).Scan(&totalEvents)
+		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT visitor_hash) FROM events WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0", startMs, endMs).Scan(&uniqueVisitors)
+		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0", startMs, endMs).Scan(&sessions)
+		h.db.Conn().QueryRow("SELECT COUNT(*) FROM events WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0", startMs, endMs).Scan(&pageviews)
 		h.db.Conn().QueryRow("SELECT COUNT(DISTINCT session_id) FROM events WHERE timestamp >= ? AND is_bot = 0", live).Scan(&liveVisitors)
 
 		h.db.Conn().QueryRow(`
@@ -693,18 +692,18 @@ func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
 			) FROM (
 				SELECT session_id, COUNT(*) as pv_count
 				FROM events
-				WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0
+				WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0
 				GROUP BY session_id
 			)
-		`, cutoff).Scan(&bounceRate)
+		`, startMs, endMs).Scan(&bounceRate)
 
 		h.db.Conn().QueryRow(`
 			SELECT COALESCE(AVG(
 				CAST(json_extract(props, '$.visible_time_ms') AS INTEGER)
 			), 0) / 1000.0
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'engagement' AND is_bot = 0
-		`, cutoff).Scan(&avgDuration)
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'engagement' AND is_bot = 0
+		`, startMs, endMs).Scan(&avgDuration)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -721,9 +720,8 @@ func (h *Handlers) GetStatsOverview(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsTimeseries returns traffic over time
 func (h *Handlers) GetStatsTimeseries(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	// Use daily granularity - filter out bots
 	var rows *sql.Rows
@@ -735,10 +733,10 @@ func (h *Handlers) GetStatsTimeseries(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as pageviews,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
 			GROUP BY period
 			ORDER BY period
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT
@@ -746,10 +744,10 @@ func (h *Handlers) GetStatsTimeseries(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as pageviews,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0
 			GROUP BY period
 			ORDER BY period
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -775,9 +773,8 @@ func (h *Handlers) GetStatsTimeseries(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsPages returns top pages
 func (h *Handlers) GetStatsPages(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -785,20 +782,20 @@ func (h *Handlers) GetStatsPages(w http.ResponseWriter, r *http.Request) {
 		rows, err = h.db.Conn().Query(`
 			SELECT path, COUNT(*) as views, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
 			GROUP BY path
 			ORDER BY views DESC
 			LIMIT 10
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT path, COUNT(*) as views, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0
 			GROUP BY path
 			ORDER BY views DESC
 			LIMIT 10
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -824,28 +821,27 @@ func (h *Handlers) GetStatsPages(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsReferrers returns traffic sources
 func (h *Handlers) GetStatsReferrers(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
 	if domain != "" {
 		rows, err = h.db.Conn().Query(`
-			SELECT COALESCE(referrer_type, 'direct') as source, COUNT(*) as visits, COUNT(DISTINCT visitor_hash) as visitors
+			SELECT COALESCE(NULLIF(referrer_type, ''), 'direct') as source, COUNT(*) as visits, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
-			GROUP BY referrer_type
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
+			GROUP BY source
 			ORDER BY visits DESC
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
-			SELECT COALESCE(referrer_type, 'direct') as source, COUNT(*) as visits, COUNT(DISTINCT visitor_hash) as visitors
+			SELECT COALESCE(NULLIF(referrer_type, ''), 'direct') as source, COUNT(*) as visits, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0
-			GROUP BY referrer_type
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0
+			GROUP BY source
 			ORDER BY visits DESC
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -871,9 +867,8 @@ func (h *Handlers) GetStatsReferrers(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsGeo returns geographic distribution
 func (h *Handlers) GetStatsGeo(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -881,20 +876,20 @@ func (h *Handlers) GetStatsGeo(w http.ResponseWriter, r *http.Request) {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(geo_country, 'Unknown') as country, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0
 			GROUP BY geo_country
 			ORDER BY visitors DESC
 			LIMIT 20
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(geo_country, 'Unknown') as country, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0
 			GROUP BY geo_country
 			ORDER BY visitors DESC
 			LIMIT 20
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -917,11 +912,81 @@ func (h *Handlers) GetStatsGeo(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+// GetStatsMapData returns geographic data with coordinates for map visualization
+func (h *Handlers) GetStatsMapData(w http.ResponseWriter, r *http.Request) {
+	startMs, endMs := getDateRangeParams(r, 7)
+	domain := getDomainParam(r)
+
+	var rows *sql.Rows
+	var err error
+	if domain != "" {
+		rows, err = h.db.Conn().Query(`
+			SELECT
+				geo_city,
+				geo_country,
+				geo_latitude,
+				geo_longitude,
+				COUNT(DISTINCT visitor_hash) as visitors,
+				COUNT(*) as pageviews
+			FROM events
+			WHERE timestamp >= ? AND timestamp <= ?
+				AND domain = ?
+				AND geo_latitude IS NOT NULL
+				AND geo_latitude != 0
+				AND is_bot = 0
+			GROUP BY geo_city, geo_country, geo_latitude, geo_longitude
+			ORDER BY visitors DESC
+			LIMIT 500
+		`, startMs, endMs, domain)
+	} else {
+		rows, err = h.db.Conn().Query(`
+			SELECT
+				geo_city,
+				geo_country,
+				geo_latitude,
+				geo_longitude,
+				COUNT(DISTINCT visitor_hash) as visitors,
+				COUNT(*) as pageviews
+			FROM events
+			WHERE timestamp >= ? AND timestamp <= ?
+				AND geo_latitude IS NOT NULL
+				AND geo_latitude != 0
+				AND is_bot = 0
+			GROUP BY geo_city, geo_country, geo_latitude, geo_longitude
+			ORDER BY visitors DESC
+			LIMIT 500
+		`, startMs, endMs)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	result := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		var city, country sql.NullString
+		var lat, lng float64
+		var visitors, pageviews int64
+		rows.Scan(&city, &country, &lat, &lng, &visitors, &pageviews)
+		result = append(result, map[string]interface{}{
+			"city":      city.String,
+			"country":   country.String,
+			"lat":       lat,
+			"lng":       lng,
+			"visitors":  visitors,
+			"pageviews": pageviews,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 // GetStatsDevices returns device breakdown
 func (h *Handlers) GetStatsDevices(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -929,18 +994,18 @@ func (h *Handlers) GetStatsDevices(w http.ResponseWriter, r *http.Request) {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(device_type, 'Unknown') as device, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0
 			GROUP BY device_type
 			ORDER BY visitors DESC
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(device_type, 'Unknown') as device, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0
 			GROUP BY device_type
 			ORDER BY visitors DESC
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -965,9 +1030,8 @@ func (h *Handlers) GetStatsDevices(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsBrowsers returns browser breakdown
 func (h *Handlers) GetStatsBrowsers(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -975,20 +1039,20 @@ func (h *Handlers) GetStatsBrowsers(w http.ResponseWriter, r *http.Request) {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(browser_name, 'Unknown') as browser, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND is_bot = 0
 			GROUP BY browser_name
 			ORDER BY visitors DESC
 			LIMIT 10
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT COALESCE(browser_name, 'Unknown') as browser, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0
 			GROUP BY browser_name
 			ORDER BY visitors DESC
 			LIMIT 10
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1013,9 +1077,8 @@ func (h *Handlers) GetStatsBrowsers(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsCampaigns returns UTM campaign breakdown
 func (h *Handlers) GetStatsCampaigns(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -1028,11 +1091,11 @@ func (h *Handlers) GetStatsCampaigns(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as visits,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND domain = ? AND is_bot = 0
 			GROUP BY utm_source, utm_medium, utm_campaign
 			ORDER BY visits DESC
 			LIMIT 20
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT
@@ -1042,11 +1105,11 @@ func (h *Handlers) GetStatsCampaigns(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as visits,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'pageview' AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'pageview' AND is_bot = 0
 			GROUP BY utm_source, utm_medium, utm_campaign
 			ORDER BY visits DESC
 			LIMIT 20
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1074,9 +1137,8 @@ func (h *Handlers) GetStatsCampaigns(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsCustomEvents returns custom event breakdown
 func (h *Handlers) GetStatsCustomEvents(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -1087,11 +1149,11 @@ func (h *Handlers) GetStatsCustomEvents(w http.ResponseWriter, r *http.Request) 
 				COUNT(*) as count,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'custom' AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'custom' AND domain = ? AND is_bot = 0
 			GROUP BY event_name
 			ORDER BY count DESC
 			LIMIT 20
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT
@@ -1099,11 +1161,11 @@ func (h *Handlers) GetStatsCustomEvents(w http.ResponseWriter, r *http.Request) 
 				COUNT(*) as count,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'custom' AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'custom' AND is_bot = 0
 			GROUP BY event_name
 			ORDER BY count DESC
 			LIMIT 20
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1133,9 +1195,8 @@ func (h *Handlers) GetStatsCustomEvents(w http.ResponseWriter, r *http.Request) 
 
 // GetStatsOutbound returns outbound link clicks
 func (h *Handlers) GetStatsOutbound(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -1146,11 +1207,11 @@ func (h *Handlers) GetStatsOutbound(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as clicks,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'click' AND event_name = 'outbound' AND domain = ? AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'click' AND event_name = 'outbound' AND domain = ? AND is_bot = 0
 			GROUP BY target
 			ORDER BY clicks DESC
 			LIMIT 20
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT
@@ -1158,11 +1219,11 @@ func (h *Handlers) GetStatsOutbound(w http.ResponseWriter, r *http.Request) {
 				COUNT(*) as clicks,
 				COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND event_type = 'click' AND event_name = 'outbound' AND is_bot = 0
+			WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'click' AND event_name = 'outbound' AND is_bot = 0
 			GROUP BY target
 			ORDER BY clicks DESC
 			LIMIT 20
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1192,9 +1253,8 @@ func (h *Handlers) GetStatsOutbound(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsVitals returns web vitals (Pro feature)
 func (h *Handlers) GetStatsVitals(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var lcp, cls, fcp, ttfb, inp float64
 	var samples int64
@@ -1209,8 +1269,8 @@ func (h *Handlers) GetStatsVitals(w http.ResponseWriter, r *http.Request) {
 				COALESCE(AVG(inp), 0),
 				COUNT(*)
 			FROM performance
-			WHERE timestamp >= ? AND domain = ?
-		`, cutoff, domain).Scan(&lcp, &cls, &fcp, &ttfb, &inp, &samples)
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ?
+		`, startMs, endMs, domain).Scan(&lcp, &cls, &fcp, &ttfb, &inp, &samples)
 	} else {
 		h.db.Conn().QueryRow(`
 			SELECT
@@ -1221,8 +1281,8 @@ func (h *Handlers) GetStatsVitals(w http.ResponseWriter, r *http.Request) {
 				COALESCE(AVG(inp), 0),
 				COUNT(*)
 			FROM performance
-			WHERE timestamp >= ?
-		`, cutoff).Scan(&lcp, &cls, &fcp, &ttfb, &inp, &samples)
+			WHERE timestamp >= ? AND timestamp <= ?
+		`, startMs, endMs).Scan(&lcp, &cls, &fcp, &ttfb, &inp, &samples)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1238,9 +1298,8 @@ func (h *Handlers) GetStatsVitals(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsErrors returns error summary (Pro feature)
 func (h *Handlers) GetStatsErrors(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	var rows *sql.Rows
 	var err error
@@ -1248,20 +1307,20 @@ func (h *Handlers) GetStatsErrors(w http.ResponseWriter, r *http.Request) {
 		rows, err = h.db.Conn().Query(`
 			SELECT error_hash, error_type, error_message, COUNT(*) as occurrences, COUNT(DISTINCT session_id) as affected_sessions
 			FROM errors
-			WHERE timestamp >= ? AND domain = ?
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ?
 			GROUP BY error_hash, error_type, error_message
 			ORDER BY occurrences DESC
 			LIMIT 10
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		rows, err = h.db.Conn().Query(`
 			SELECT error_hash, error_type, error_message, COUNT(*) as occurrences, COUNT(DISTINCT session_id) as affected_sessions
 			FROM errors
-			WHERE timestamp >= ?
+			WHERE timestamp >= ? AND timestamp <= ?
 			GROUP BY error_hash, error_type, error_message
 			ORDER BY occurrences DESC
 			LIMIT 10
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1289,9 +1348,8 @@ func (h *Handlers) GetStatsErrors(w http.ResponseWriter, r *http.Request) {
 
 // GetStatsBots returns bot traffic breakdown
 func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
-	days := getDaysParam(r, 7)
+	startMs, endMs := getDateRangeParams(r, 7)
 	domain := getDomainParam(r)
-	cutoff := time.Now().Add(-time.Duration(days) * 24 * time.Hour).UnixMilli()
 
 	// Category distribution
 	var categoryRows *sql.Rows
@@ -1300,16 +1358,16 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 		categoryRows, err = h.db.Conn().Query(`
 			SELECT bot_category, COUNT(*) as count, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ? AND domain = ?
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ?
 			GROUP BY bot_category
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		categoryRows, err = h.db.Conn().Query(`
 			SELECT bot_category, COUNT(*) as count, COUNT(DISTINCT visitor_hash) as visitors
 			FROM events
-			WHERE timestamp >= ?
+			WHERE timestamp >= ? AND timestamp <= ?
 			GROUP BY bot_category
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1348,10 +1406,10 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 				END as score_range,
 				COUNT(*) as count
 			FROM events
-			WHERE timestamp >= ? AND domain = ?
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ?
 			GROUP BY score_range
 			ORDER BY score_range
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		scoreRows, err = h.db.Conn().Query(`
 			SELECT
@@ -1369,10 +1427,10 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 				END as score_range,
 				COUNT(*) as count
 			FROM events
-			WHERE timestamp >= ?
+			WHERE timestamp >= ? AND timestamp <= ?
 			GROUP BY score_range
 			ORDER BY score_range
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1402,10 +1460,10 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 				SUM(CASE WHEN bot_category = 'bad_bot' THEN 1 ELSE 0 END) as bad_bots,
 				SUM(CASE WHEN bot_category = 'good_bot' THEN 1 ELSE 0 END) as good_bots
 			FROM events
-			WHERE timestamp >= ? AND domain = ?
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ?
 			GROUP BY period
 			ORDER BY period
-		`, cutoff, domain)
+		`, startMs, endMs, domain)
 	} else {
 		timeRows, err = h.db.Conn().Query(`
 			SELECT
@@ -1415,10 +1473,10 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 				SUM(CASE WHEN bot_category = 'bad_bot' THEN 1 ELSE 0 END) as bad_bots,
 				SUM(CASE WHEN bot_category = 'good_bot' THEN 1 ELSE 0 END) as good_bots
 			FROM events
-			WHERE timestamp >= ?
+			WHERE timestamp >= ? AND timestamp <= ?
 			GROUP BY period
 			ORDER BY period
-		`, cutoff)
+		`, startMs, endMs)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1459,6 +1517,28 @@ func getDaysParam(r *http.Request, defaultVal int) int {
 
 func getDomainParam(r *http.Request) string {
 	return r.URL.Query().Get("domain")
+}
+
+// getDateRangeParams parses start/end ISO strings or falls back to days parameter
+// Returns startMs and endMs as millisecond timestamps for SQLite queries
+func getDateRangeParams(r *http.Request, defaultDays int) (startMs, endMs int64) {
+	startStr := r.URL.Query().Get("start")
+	endStr := r.URL.Query().Get("end")
+
+	if startStr != "" && endStr != "" {
+		// Parse ISO 8601 / RFC3339 strings from JavaScript's toISOString()
+		startTime, errS := time.Parse(time.RFC3339, startStr)
+		endTime, errE := time.Parse(time.RFC3339, endStr)
+
+		if errS == nil && errE == nil {
+			return startTime.UTC().UnixMilli(), endTime.UTC().UnixMilli()
+		}
+	}
+
+	// Fallback to days parameter
+	days := getDaysParam(r, defaultDays)
+	now := time.Now()
+	return now.Add(-time.Duration(days) * 24 * time.Hour).UnixMilli(), now.UnixMilli()
 }
 
 // buildDomainFilter returns SQL condition and args for domain filtering

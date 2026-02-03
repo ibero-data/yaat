@@ -81,12 +81,22 @@ interface OutboundLink {
   unique_visitors: number
 }
 
+interface MapPoint {
+  city: string
+  country: string
+  lat: number
+  lng: number
+  visitors: number
+  pageviews: number
+}
+
 export interface AnalyticsData {
   overview: OverviewStats | null
   timeseries: TimeseriesPoint[]
   topPages: TopPage[]
   referrers: Referrer[]
   geo: GeoData[]
+  mapData: MapPoint[]
   devices: DeviceData[]
   browsers: BrowserData[]
   vitals: WebVitals | null
@@ -111,6 +121,7 @@ export function useAnalytics() {
     topPages: [],
     referrers: [],
     geo: [],
+    mapData: [],
     devices: [],
     browsers: [],
     vitals: null,
@@ -146,6 +157,7 @@ export function useAnalytics() {
         topPages,
         referrers,
         geo,
+        mapData,
         devices,
         browsers,
         vitals,
@@ -159,6 +171,7 @@ export function useAnalytics() {
         fetchJSON<TopPage[]>(`/api/stats/pages?${qs}`),
         fetchJSON<Referrer[]>(`/api/stats/referrers?${qs}`),
         fetchJSON<GeoData[]>(`/api/stats/geo?${qs}`),
+        fetchJSON<MapPoint[]>(`/api/stats/map?${qs}`).catch(() => []),
         fetchJSON<DeviceData[]>(`/api/stats/devices?${qs}`),
         fetchJSON<BrowserData[]>(`/api/stats/browsers?${qs}`),
         fetchJSON<WebVitals>(`/api/stats/vitals?${qs}`).catch(() => null),
@@ -174,6 +187,7 @@ export function useAnalytics() {
         topPages,
         referrers,
         geo,
+        mapData,
         devices,
         browsers,
         vitals,

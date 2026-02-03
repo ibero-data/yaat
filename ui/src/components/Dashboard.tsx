@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAnalytics } from '../hooks/useAnalytics'
 import { useDateRangeStore } from '../stores/useDateRangeStore'
 import { useRealtime } from '../hooks/useRealtime'
@@ -45,6 +45,8 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts'
+import { VisitorMap } from './VisitorMap'
+import { MapPin } from 'lucide-react'
 
 const DEVICE_ICONS: Record<string, typeof Monitor> = {
   desktop: Monitor,
@@ -143,22 +145,37 @@ function ProgressList({
 
 export function Dashboard() {
   const { data, loading, error, refresh } = useAnalytics()
-  const { connected, lastEvent } = useRealtime()
   const { license } = useLicense()
   const { selectedDomain } = useDomain()
 
   const { dateRange, setDateRange } = useDateRangeStore()
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  useEffect(() => {
-    handleRefresh()
-  }, [dateRange, selectedDomain])
-
-  async function handleRefresh() {
+  const handleRefresh = useCallback(async () => {
     const domainFilter = selectedDomain?.domain || undefined
     await refresh(dateRange, domainFilter)
     setLastRefresh(new Date())
-  }
+  }, [dateRange, selectedDomain, refresh])
+
+  // Real-time updates with 5s debounce - only refresh if viewing recent data
+  const { connected, lastEvent } = useRealtime({
+    onNewEvents: useCallback(() => {
+      // Only auto-refresh if viewing data from last 7 days or less
+      if (dateRange?.from && dateRange?.to) {
+        const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysDiff <= 7) {
+          handleRefresh()
+        }
+      } else {
+        handleRefresh()
+      }
+    }, [dateRange, handleRefresh]),
+    debounceMs: 5000,
+  })
+
+  useEffect(() => {
+    handleRefresh()
+  }, [dateRange, selectedDomain]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
@@ -553,6 +570,20 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Visitor Map */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg font-semibold">Visitor Locations</CardTitle>
+          </div>
+          <CardDescription>Geographic distribution of your visitors</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VisitorMap data={data.mapData} loading={loading} />
+        </CardContent>
+      </Card>
 
       {/* Pro features */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -32,12 +32,15 @@ export function DomainProvider({ children }: { children: ReactNode }) {
         const data = await response.json()
         setDomains(data)
 
-        // Auto-select first domain if none selected
-        if (data.length > 0 && !selectedDomain) {
-          // Check localStorage for previously selected domain
-          const storedDomainId = localStorage.getItem('yaat_selected_domain')
-          const storedDomain = data.find((d: Domain) => d.id === storedDomainId)
-          setSelectedDomain(storedDomain || data[0])
+        // Auto-select first domain if none selected - use functional update to avoid stale closure
+        if (data.length > 0) {
+          setSelectedDomain((current) => {
+            if (current) return current  // Already have a selection
+            // Check localStorage for previously selected domain
+            const storedDomainId = localStorage.getItem('yaat_selected_domain')
+            const storedDomain = data.find((d: Domain) => d.id === storedDomainId)
+            return storedDomain || data[0]
+          })
         }
       }
     } catch (err) {
@@ -45,7 +48,7 @@ export function DomainProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [selectedDomain])
+  }, [])
 
   useEffect(() => {
     refreshDomains()

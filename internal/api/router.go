@@ -134,6 +134,7 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 			r.Get("/stats/pages", h.GetStatsPages)
 			r.Get("/stats/referrers", h.GetStatsReferrers)
 			r.Get("/stats/geo", h.GetStatsGeo)
+			r.Get("/stats/map", h.GetStatsMapData)
 			r.Get("/stats/devices", h.GetStatsDevices)
 			r.Get("/stats/browsers", h.GetStatsBrowsers)
 			r.Get("/stats/campaigns", h.GetStatsCampaigns)

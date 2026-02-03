@@ -100,7 +100,7 @@ func (e *Enricher) EnrichWithHeaders(ip, userAgent, referrerURL string, headers 
 	// Referrer classification
 	if referrerURL != "" {
 		result.ReferrerDomain = extractDomain(referrerURL)
-		result.ReferrerType = classifyReferrer(referrerURL, result.ReferrerDomain)
+		result.ReferrerType = classifyReferrerInternal(referrerURL, result.ReferrerDomain)
 	}
 
 	return result
@@ -145,7 +145,16 @@ func extractDomain(rawURL string) string {
 	return parsed.Host
 }
 
-func classifyReferrer(referrerURL, referrerDomain string) string {
+// ClassifyReferrer classifies a referrer URL into categories (exported for use in handlers)
+func ClassifyReferrer(referrerURL string) string {
+	if referrerURL == "" {
+		return "direct"
+	}
+	domain := extractDomain(referrerURL)
+	return classifyReferrerInternal(referrerURL, domain)
+}
+
+func classifyReferrerInternal(referrerURL, referrerDomain string) string {
 	if referrerURL == "" {
 		return "direct"
 	}

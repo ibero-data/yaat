@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface RealtimeEvent {
   type: string
@@ -13,10 +13,18 @@ interface RealtimeEvent {
   }
 }
 
-export function useRealtime() {
+interface UseRealtimeOptions {
+  onNewEvents?: () => void
+  debounceMs?: number
+}
+
+export function useRealtime(options: UseRealtimeOptions = {}) {
+  const { onNewEvents, debounceMs = 5000 } = options
+
   const [connected, setConnected] = useState(false)
   const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null)
   const [eventSource, setEventSource] = useState<EventSource | null>(null)
+  const debounceTimerRef = useRef<number | null>(null)
 
   const connect = useCallback(() => {
     if (eventSource) {
@@ -31,9 +39,19 @@ export function useRealtime() {
 
     es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data)
+        const data = JSON.parse(event.data) as RealtimeEvent
         if (data.type !== 'connected') {
           setLastEvent(data)
+
+          // Debounced callback for data refresh
+          if (data.type === 'batch' && onNewEvents) {
+            if (debounceTimerRef.current) {
+              clearTimeout(debounceTimerRef.current)
+            }
+            debounceTimerRef.current = window.setTimeout(() => {
+              onNewEvents()
+            }, debounceMs)
+          }
         }
       } catch (e) {
         console.error('SSE parse error:', e)
@@ -48,9 +66,12 @@ export function useRealtime() {
     }
 
     setEventSource(es)
-  }, [eventSource])
+  }, [eventSource, onNewEvents, debounceMs])
 
   const disconnect = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
     if (eventSource) {
       eventSource.close()
       setEventSource(null)
@@ -61,6 +82,9 @@ export function useRealtime() {
   useEffect(() => {
     connect()
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
       if (eventSource) {
         eventSource.close()
       }
