@@ -58,6 +58,37 @@ curl -sSL https://raw.githubusercontent.com/ibero-data/yaat/main/install.sh | ba
 # Complete the setup wizard to create your admin account
 ```
 
+## Uninstall
+
+### Complete removal (systemd install)
+
+```bash
+# Stop and disable the service
+sudo systemctl stop yaat
+sudo systemctl disable yaat
+
+# Remove service file
+sudo rm /etc/systemd/system/yaat.service
+sudo systemctl daemon-reload
+
+# Remove binary
+sudo rm /usr/local/bin/yaat
+
+# Remove data (WARNING: deletes all analytics data!)
+sudo rm -rf /var/lib/yaat
+
+# Remove yaat user (optional)
+sudo userdel yaat
+```
+
+### Manual install removal
+
+```bash
+# Just remove the binary and data
+rm ./bin/yaat
+rm -rf ./data
+```
+
 ## Build from Source
 
 Requires Go 1.22+ and Bun.
@@ -69,6 +100,21 @@ make all
 ./bin/yaat serve
 ```
 
+## Nginx Setup (Reverse Proxy)
+
+Copy the example config:
+
+```bash
+sudo cp nginx.conf.example /etc/nginx/sites-available/yaat
+sudo ln -s /etc/nginx/sites-available/yaat /etc/nginx/sites-enabled/
+# Edit the file and replace 'your-domain.com' with your domain
+sudo nano /etc/nginx/sites-available/yaat
+sudo nginx -t && sudo systemctl reload nginx
+
+# Add HTTPS with Let's Encrypt
+sudo certbot --nginx -d your-domain.com
+```
+
 ## Configuration
 
 Environment variables (or `.env` file):
@@ -78,7 +124,7 @@ Environment variables (or `.env` file):
 | `YAAT_PORT` | `3456` | HTTP server port |
 | `YAAT_DATA_DIR` | `./data` | Database storage directory |
 | `YAAT_JWT_SECRET` | (random) | JWT signing secret (auto-generated if not set) |
-| `YAAT_COOKIE_SECURE` | `false` | Use secure cookies (set to `true` in production with HTTPS) |
+| `YAAT_SECURE_COOKIES` | `false` | Set to `true` only if running HTTPS directly (not behind proxy) |
 
 ## Tracking Setup
 

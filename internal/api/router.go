@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -42,7 +43,10 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 	}))
 
 	// Create auth service
-	secureCookie := !strings.Contains(cfg.ListenAddr, "localhost") && !strings.Contains(cfg.ListenAddr, "127.0.0.1")
+	// secureCookie should only be true when running with HTTPS directly
+	// When behind a reverse proxy (nginx), the proxy handles HTTPS
+	// Check YAAT_SECURE_COOKIES env var, default to false for proxy setups
+	secureCookie := os.Getenv("YAAT_SECURE_COOKIES") == "true"
 	authService := auth.New(cfg.SecretKey, secureCookie)
 	authMiddleware := auth.NewMiddleware(authService)
 

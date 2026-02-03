@@ -126,7 +126,7 @@ func (a *Auth) SetAuthCookie(w http.ResponseWriter, token string) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   a.secureCookie,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(a.tokenDuration.Seconds()),
 	})
 }
@@ -139,7 +139,7 @@ func (a *Auth) ClearAuthCookie(w http.ResponseWriter) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   a.secureCookie,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
 }

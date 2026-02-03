@@ -56,6 +56,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(userCmd)
 	rootCmd.AddCommand(geoipCmd)
+	rootCmd.AddCommand(updateCmd)
 }
 
 func main() {
