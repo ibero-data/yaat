@@ -23,7 +23,6 @@ keys/
 !public.key
 
 # Go
-go.sum
 
 # Node
 ui/node_modules/
