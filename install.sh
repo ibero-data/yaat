@@ -163,7 +163,7 @@ print_success() {
 
   if [ "$WITH_SYSTEMD" = "true" ] && [ "$OS" = "linux" ]; then
     echo "  # Run setup wizard"
-    echo "  sudo -u yaat $INSTALL_DIR/yaat init --data-dir=$DATA_DIR"
+    echo "  sudo -u yaat $INSTALL_DIR/yaat init --data=$DATA_DIR"
     echo ""
     echo "  # Start the service"
     echo "  sudo systemctl start yaat"
