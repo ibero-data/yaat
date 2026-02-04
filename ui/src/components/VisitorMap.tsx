@@ -1,5 +1,6 @@
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
+import { useTheme } from './theme/theme-provider'
 import 'leaflet/dist/leaflet.css'
 
 interface MapPoint {
@@ -17,6 +18,12 @@ interface VisitorMapProps {
 }
 
 export function VisitorMap({ data, loading }: VisitorMapProps) {
+  const { theme } = useTheme()
+
+  // Determine if dark mode is active
+  const isDark = theme === 'dark' ||
+    (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
   if (loading) {
     return (
       <div className="h-[400px] flex items-center justify-center bg-muted rounded-lg">
@@ -43,7 +50,7 @@ export function VisitorMap({ data, loading }: VisitorMapProps) {
     <MapContainer
       center={[20, 0]}
       zoom={2}
-      className="h-[400px] rounded-lg z-0"
+      className={`h-[400px] rounded-lg z-0 ${isDark ? 'map-dark' : ''}`}
       scrollWheelZoom={false}
     >
       <TileLayer

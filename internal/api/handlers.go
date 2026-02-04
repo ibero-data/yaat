@@ -528,6 +528,52 @@ func (h *Handlers) GetDatabaseInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ExplorerQuery executes a read-only SQL query (admin only)
+func (h *Handlers) ExplorerQuery(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Query string `json:"query"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid JSON"})
+		return
+	}
+
+	if req.Query == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Query is required"})
+		return
+	}
+
+	result, err := h.db.ExecuteExplorerQuery(req.Query)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// ExplorerSchema returns the database schema for autocomplete
+func (h *Handlers) ExplorerSchema(w http.ResponseWriter, r *http.Request) {
+	schema, err := h.db.GetTableSchema()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(schema)
+}
+
 // SSE for real-time events
 func (h *Handlers) EventStream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)

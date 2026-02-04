@@ -52,7 +52,8 @@ const qualityChartConfig = {
   },
 } satisfies ChartConfig
 
-function formatNumber(num: number): string {
+function formatNumber(num: number | undefined | null): string {
+  if (num == null) return '0'
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
   return num.toString()
@@ -322,11 +323,11 @@ function AdFraudContent() {
                           <span
                             className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
                             style={{
-                              backgroundColor: `${getQualityColor(source.quality_score)}20`,
-                              color: getQualityColor(source.quality_score),
+                              backgroundColor: `${getQualityColor(source.quality_score ?? 0)}20`,
+                              color: getQualityColor(source.quality_score ?? 0),
                             }}
                           >
-                            {source.quality_score}%
+                            {source.quality_score ?? 0}%
                           </span>
                         </td>
                       </tr>

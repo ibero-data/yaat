@@ -188,6 +188,13 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 				r.Put("/users/{id}", h.UpdateUser)
 				r.Delete("/users/{id}", h.DeleteUser)
 			})
+
+			// Admin only - Data Explorer
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware.RequireAdmin)
+				r.Post("/explorer/query", h.ExplorerQuery)
+				r.Get("/explorer/schema", h.ExplorerSchema)
+			})
 		})
 	})
 

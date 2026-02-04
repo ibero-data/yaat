@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 
@@ -153,5 +154,27 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Successfully updated to %s\n", release.TagName)
-	fmt.Println("Restart YAAT to use the new version.")
+
+	// Try to restart the service automatically
+	fmt.Println("Restarting YAAT...")
+
+	// Check if systemctl is available (Linux with systemd)
+	if _, err := exec.LookPath("systemctl"); err == nil {
+		// Try systemd restart (may need sudo)
+		cmd := exec.Command("systemctl", "restart", "yaat")
+		if err := cmd.Run(); err != nil {
+			// Try with sudo
+			cmd = exec.Command("sudo", "systemctl", "restart", "yaat")
+			if err := cmd.Run(); err != nil {
+				fmt.Println("Could not restart automatically.")
+				fmt.Println("Please run: sudo systemctl restart yaat")
+				return
+			}
+		}
+		fmt.Println("YAAT restarted successfully!")
+		return
+	}
+
+	// Fallback for non-systemd systems
+	fmt.Println("Please restart YAAT manually to use the new version.")
 }

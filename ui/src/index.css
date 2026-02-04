@@ -184,3 +184,26 @@ body {
   }
 }
 
+/* Map dark mode filter - inverts OpenStreetMap tiles for dark theme */
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
+/* Re-invert markers and popups so they display correctly */
+.map-dark .leaflet-marker-icon,
+.map-dark .leaflet-marker-shadow,
+.map-dark .leaflet-popup-content-wrapper,
+.map-dark .leaflet-popup-tip {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Fix cluster markers in dark mode */
+.map-dark .marker-cluster {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Ensure circle markers (our data points) are not affected by the inversion */
+.map-dark .leaflet-overlay-pane {
+  filter: none;
+}
+

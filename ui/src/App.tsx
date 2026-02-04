@@ -6,14 +6,38 @@ import { DomainProvider } from './contexts/DomainContext'
 import { ThemeProvider, useTheme } from './components/theme/theme-provider'
 import { Dashboard } from './components/Dashboard'
 import { LicenseSettings } from './components/LicenseSettings'
-import { Settings } from './pages/Settings'
+import {
+  DomainsSettings,
+  EmailSettings,
+  GeoIPSettings,
+  AccountSettings,
+  UsersSettings,
+} from './pages/settings'
+import { Explorer } from './pages/Explorer'
 import { Login } from './pages/Login'
 import { BotAnalysis } from './pages/BotAnalysis'
 import { AdFraud } from './pages/AdFraud'
-import { Users } from './pages/Users'
 import { DomainPicker } from './components/DomainPicker'
 import { FeatureBadge } from './components/FeatureGate'
-import { BarChart3, Settings as SettingsIcon, Key, LogOut, Moon, Sun, Monitor, Bot, ShieldAlert, Users as UsersIcon, ChevronsUpDown } from 'lucide-react'
+import {
+  BarChart3,
+  Settings as SettingsIcon,
+  Key,
+  LogOut,
+  Moon,
+  Sun,
+  Monitor,
+  Bot,
+  ShieldAlert,
+  Users as UsersIcon,
+  ChevronsUpDown,
+  ChevronRight,
+  Globe,
+  Mail,
+  MapPin,
+  User,
+  Database,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +45,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from './components/ui/dropdown-menu'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './components/ui/collapsible'
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +62,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
@@ -107,7 +139,7 @@ function ThemeSelector() {
       <DropdownMenuContent side="right" align="end" className="w-40">
         <DropdownMenuItem onClick={() => setTheme('light')}>
           <Sun className="mr-2 h-4 w-4" />
-          
+          Light
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('dark')}>
           <Moon className="mr-2 h-4 w-4" />
@@ -177,8 +209,10 @@ function UserMenu() {
 function AppSidebar() {
   const location = useLocation()
   const { state } = useSidebar()
+  const { isAdmin } = useAuth()
   const isCollapsed = state === 'collapsed'
   const [version, setVersion] = useState<string>('...')
+  const [settingsOpen, setSettingsOpen] = useState(location.pathname.startsWith('/settings'))
 
   useEffect(() => {
     fetch('/api/version')
@@ -187,14 +221,32 @@ function AppSidebar() {
       .catch(() => setVersion('dev'))
   }, [])
 
+  // Auto-expand settings when navigating to a settings page
+  useEffect(() => {
+    if (location.pathname.startsWith('/settings')) {
+      setSettingsOpen(true)
+    }
+  }, [location.pathname])
+
   const navigation = [
     { path: '/', name: 'Dashboard', icon: BarChart3 },
     { path: '/bots', name: 'Bot Analysis', icon: Bot },
     { path: '/fraud', name: 'Ad Fraud', icon: ShieldAlert, pro: 'ad_fraud' },
-    { path: '/users', name: 'Users', icon: UsersIcon, pro: 'multi_user' },
-    { path: '/settings', name: 'Settings', icon: SettingsIcon },
-    { path: '/license', name: 'License', icon: Key },
+    { path: '/explorer', name: 'Data Explorer', icon: Database, adminOnly: true },
   ]
+
+  const settingsItems = [
+    { path: '/settings/domains', name: 'Domains', icon: Globe },
+    { path: '/settings/email', name: 'Email', icon: Mail, adminOnly: true },
+    { path: '/settings/geoip', name: 'GeoIP', icon: MapPin, adminOnly: true },
+    { path: '/settings/account', name: 'Account', icon: User },
+    { path: '/settings/users', name: 'Users', icon: UsersIcon, adminOnly: true, pro: 'multi_user' },
+    { path: '/settings/license', name: 'License', icon: Key },
+  ]
+
+  const visibleSettingsItems = settingsItems.filter(
+    item => !item.adminOnly || isAdmin
+  )
 
   return (
     <Sidebar collapsible="icon">
@@ -206,7 +258,7 @@ function AppSidebar() {
                 <img src="/logo.png" alt="YAAT" className="h-8 w-8 shrink-0" />
                 {!isCollapsed && (
                   <div className="flex flex-col items-start">
-                    <span className="font-bold">YAAT </span>
+                    <span className="font-bold">YAAT</span>
                     <span className="text-xs text-muted-foreground">Analytics</span>
                   </div>
                 )}
@@ -228,7 +280,9 @@ function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((item) => (
+              {navigation
+                .filter(item => !item.adminOnly || isAdmin)
+                .map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     asChild
@@ -243,6 +297,46 @@ function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Settings collapsible menu */}
+              <Collapsible
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      isActive={location.pathname.startsWith('/settings')}
+                      tooltip="Settings"
+                    >
+                      <SettingsIcon className="h-4 w-4" />
+                      <span className="flex-1">Settings</span>
+                      {!isCollapsed && (
+                        <ChevronRight className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {visibleSettingsItems.map((item) => (
+                        <SidebarMenuSubItem key={item.path}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={location.pathname === item.path}
+                          >
+                            <Link to={item.path}>
+                              <item.icon className="h-4 w-4" />
+                              <span className="flex-1">{item.name}</span>
+                              {item.pro && <FeatureBadge feature={item.pro} />}
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -276,18 +370,28 @@ function AppLayout() {
       <SidebarInset>
         <header className="flex h-12 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger />
-          <span className="font-semibold">YAAT </span>
+          <span className="font-semibold">YAAT</span>
         </header>
-        <main className="flex-1">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="max-w-[1800px] mx-auto w-full h-full">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/bots" element={<BotAnalysis />} />
               <Route path="/fraud" element={<AdFraud />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/license" element={
-                <div className="p-6">
+              <Route path="/explorer" element={<Explorer />} />
+              {/* Settings routes */}
+              <Route path="/settings" element={<Navigate to="/settings/domains" replace />} />
+              <Route path="/settings/domains" element={<DomainsSettings />} />
+              <Route path="/settings/email" element={<EmailSettings />} />
+              <Route path="/settings/geoip" element={<GeoIPSettings />} />
+              <Route path="/settings/account" element={<AccountSettings />} />
+              <Route path="/settings/users" element={<UsersSettings />} />
+              <Route path="/settings/license" element={
+                <div className="p-6 max-w-4xl mx-auto">
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-foreground">License</h1>
+                    <p className="text-muted-foreground">Manage your license and subscription</p>
+                  </div>
                   <LicenseSettings />
                 </div>
               } />

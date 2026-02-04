@@ -1,0 +1,6 @@
+export { SettingsLayout } from './SettingsLayout'
+export { DomainsSettings } from './DomainsSettings'
+export { EmailSettings } from './EmailSettings'
+export { GeoIPSettings } from './GeoIPSettings'
+export { AccountSettings } from './AccountSettings'
+export { UsersSettings } from './UsersSettings'

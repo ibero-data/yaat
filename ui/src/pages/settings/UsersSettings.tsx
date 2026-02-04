@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '../hooks/useAuth'
-import { useLicense } from '../hooks/useLicense'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
+import { useAuth } from '@/hooks/useAuth'
+import { useLicense } from '@/hooks/useLicense'
+import { Navigate } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users as UsersIcon, Plus, Trash2, Loader2, Shield, Eye, AlertCircle, X } from 'lucide-react'
 import {
   Select,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { SettingsLayout } from './SettingsLayout'
 
 interface User {
   id: string
@@ -22,7 +24,7 @@ interface User {
   created_at: number
 }
 
-export function Users() {
+export function UsersSettings() {
   const { user: currentUser, isAdmin } = useAuth()
   const { hasFeature, getLimit } = useLicense()
   const [users, setUsers] = useState<User[]>([])
@@ -71,11 +73,31 @@ export function Users() {
     }
   }, [fetchUsers, isAdmin])
 
+  if (!isAdmin) {
+    return <Navigate to="/settings/domains" replace />
+  }
+
+  if (!hasFeature('multi_user')) {
+    return (
+      <SettingsLayout title="Users" description="Manage team access to your analytics">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Pro Feature</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              User management is available with a Pro or Enterprise license.
+              Upgrade to add team members and manage access.
+            </p>
+          </CardContent>
+        </Card>
+      </SettingsLayout>
+    )
+  }
+
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault()
     setCreateError(null)
 
-    // Validate
     if (!newUser.email || !newUser.email.includes('@')) {
       setCreateError('Please enter a valid email address')
       return
@@ -109,7 +131,6 @@ export function Users() {
         throw new Error(data.error || 'Failed to create user')
       }
 
-      // Reset form and close
       setNewUser({
         email: '',
         name: '',
@@ -161,31 +182,11 @@ export function Users() {
     })
   }
 
-  if (!hasFeature('multi_user')) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Pro Feature</h2>
-            <p className="text-muted-foreground text-center max-w-md">
-              User management is available with a Pro or Enterprise license.
-              Upgrade to add team members and manage access.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Users</h1>
-          <p className="text-muted-foreground">Manage team access to your analytics</p>
-        </div>
-        {!showCreateForm && (
+    <SettingsLayout title="Users" description="Manage team access to your analytics">
+      {/* Header with Add button */}
+      {!showCreateForm && (
+        <div className="flex justify-end -mt-4 mb-2">
           <Button
             onClick={() => setShowCreateForm(true)}
             disabled={maxUsers !== -1 && users.length >= maxUsers}
@@ -193,12 +194,12 @@ export function Users() {
             <Plus className="h-4 w-4 mr-2" />
             Add User
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create user form */}
       {showCreateForm && (
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Add User</CardTitle>
@@ -319,7 +320,7 @@ export function Users() {
 
       {/* User limit warning */}
       {maxUsers !== -1 && users.length >= maxUsers && (
-        <Card className="mb-6 border-yellow-500/50 bg-yellow-500/5">
+        <Card className="border-yellow-500/50 bg-yellow-500/5">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-yellow-500" />
             <div>
@@ -418,6 +419,6 @@ export function Users() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </SettingsLayout>
   )
 }

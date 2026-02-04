@@ -87,6 +87,8 @@ const presets = [
 interface DateRangePickerProps {
   dateRange: DateRange | undefined
   onDateRangeChange: (range: DateRange | undefined) => void
+  selectedPreset?: string
+  onPresetChange?: (preset: string) => void
   className?: string
   align?: "start" | "center" | "end"
 }
@@ -94,21 +96,31 @@ interface DateRangePickerProps {
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
+  selectedPreset = "last7days",
+  onPresetChange,
   className,
   align = "end",
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
-  const [selectedPreset, setSelectedPreset] = React.useState<string>("last7days")
 
   const handlePresetSelect = (preset: typeof presets[number]) => {
-    setSelectedPreset(preset.value)
+    onPresetChange?.(preset.value)
     onDateRangeChange(preset.getRange())
     setIsOpen(false)
   }
 
   const handleCalendarSelect = (range: DateRange | undefined) => {
-    setSelectedPreset("custom")
-    onDateRangeChange(range)
+    onPresetChange?.("custom")
+    // Ensure full day coverage with startOfDay/endOfDay
+    if (range?.from) {
+      const normalizedRange: DateRange = {
+        from: startOfDay(range.from),
+        to: range.to ? endOfDay(range.to) : endOfDay(range.from)
+      }
+      onDateRangeChange(normalizedRange)
+    } else {
+      onDateRangeChange(range)
+    }
   }
 
   const formatDateRange = () => {
@@ -167,7 +179,7 @@ export function DateRangePicker({
             ))}
             <div className="border-t border-border my-2" />
             <button
-              onClick={() => setSelectedPreset("custom")}
+              onClick={() => onPresetChange?.("custom")}
               className={cn(
                 "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
                 selectedPreset === "custom"

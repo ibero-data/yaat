@@ -1,7 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { startOfDay, endOfDay, subDays } from 'date-fns'
+import { startOfDay, endOfDay, subDays, format, parseISO } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
+
+// URL parameter helpers for sharing/bookmarking
+export const dateRangeToParams = (range: DateRange | undefined): Record<string, string> => {
+  if (!range?.from || !range?.to) return {}
+  return {
+    start: format(range.from, 'yyyy-MM-dd'),
+    end: format(range.to, 'yyyy-MM-dd')
+  }
+}
+
+export const paramsToDateRange = (start: string | null, end: string | null): DateRange | null => {
+  if (!start || !end) return null
+  try {
+    return {
+      from: startOfDay(parseISO(start)),
+      to: endOfDay(parseISO(end))
+    }
+  } catch {
+    return null
+  }
+}
 
 interface DateRangeState {
   dateRange: DateRange | undefined

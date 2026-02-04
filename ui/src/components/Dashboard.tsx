@@ -1,6 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { format } from 'date-fns'
 import { useAnalytics } from '../hooks/useAnalytics'
-import { useDateRangeStore } from '../stores/useDateRangeStore'
+import { useDateRangeStore, paramsToDateRange } from '../stores/useDateRangeStore'
 import { useRealtime } from '../hooks/useRealtime'
 import { useLicense } from '../hooks/useLicense'
 import { useDomain } from '../contexts/DomainContext'
@@ -146,10 +148,50 @@ function ProgressList({
 export function Dashboard() {
   const { data, loading, error, refresh } = useAnalytics()
   const { license } = useLicense()
-  const { selectedDomain } = useDomain()
+  const { selectedDomain, domains, setSelectedDomain } = useDomain()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initializedFromUrl = useRef(false)
 
-  const { dateRange, setDateRange } = useDateRangeStore()
+  const { dateRange, setDateRange, selectedPreset, setPreset } = useDateRangeStore()
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+
+  // Initialize from URL params on first load
+  useEffect(() => {
+    if (initializedFromUrl.current) return
+    initializedFromUrl.current = true
+
+    const startParam = searchParams.get('start')
+    const endParam = searchParams.get('end')
+    const domainParam = searchParams.get('domain')
+
+    // Set date range from URL if present
+    const urlDateRange = paramsToDateRange(startParam, endParam)
+    if (urlDateRange) {
+      setDateRange(urlDateRange)
+      setPreset('custom')  // Mark as custom when loading from URL
+    }
+
+    // Set domain from URL if present
+    if (domainParam && domains.length > 0) {
+      const domainFromUrl = domains.find(d => d.domain === domainParam)
+      if (domainFromUrl) {
+        setSelectedDomain(domainFromUrl)
+      }
+    }
+  }, [searchParams, domains, setDateRange, setPreset, setSelectedDomain])
+
+  // Update URL when date range or domain changes
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (dateRange?.from && dateRange?.to) {
+      params.set('start', format(dateRange.from, 'yyyy-MM-dd'))
+      params.set('end', format(dateRange.to, 'yyyy-MM-dd'))
+    }
+    if (selectedDomain) {
+      params.set('domain', selectedDomain.domain)
+    }
+    setSearchParams(params, { replace: true })
+  }, [dateRange, selectedDomain, setSearchParams])
 
   const handleRefresh = useCallback(async () => {
     const domainFilter = selectedDomain?.domain || undefined
@@ -328,6 +370,8 @@ export function Dashboard() {
           <DateRangePicker
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            selectedPreset={selectedPreset}
+            onPresetChange={setPreset}
           />
           <Button onClick={handleRefresh} disabled={loading} size="sm" variant="outline">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
