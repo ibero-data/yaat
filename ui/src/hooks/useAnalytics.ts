@@ -9,6 +9,12 @@ interface OverviewStats {
   live_visitors: number
   bounce_rate: number
   avg_session_seconds: number
+  prev_total_events?: number
+  prev_unique_visitors?: number
+  prev_sessions?: number
+  prev_pageviews?: number
+  prev_bounce_rate?: number
+  prev_avg_session_seconds?: number
 }
 
 interface TimeseriesPoint {
@@ -25,6 +31,7 @@ interface TopPage {
 
 interface Referrer {
   source: string
+  referrer_type?: string
   visits: number
   visitors: number
 }
@@ -90,6 +97,14 @@ interface MapPoint {
   pageviews: number
 }
 
+export interface AnalyticsFilters {
+  country?: string
+  browser?: string
+  device?: string
+  page?: string
+  referrer?: string
+}
+
 export interface AnalyticsData {
   overview: OverviewStats | null
   timeseries: TimeseriesPoint[]
@@ -133,7 +148,7 @@ export function useAnalytics() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const fetchAnalytics = useCallback(async (dateRange?: DateRange, domain?: string) => {
+  const fetchAnalytics = useCallback(async (dateRange?: DateRange, domain?: string, filters?: AnalyticsFilters) => {
     setLoading(true)
     setError(null)
 
@@ -147,6 +162,13 @@ export function useAnalytics() {
     }
     if (domain) {
       params.set('domain', domain)
+    }
+    if (filters) {
+      if (filters.country) params.set('country', filters.country)
+      if (filters.browser) params.set('browser', filters.browser)
+      if (filters.device) params.set('device', filters.device)
+      if (filters.page) params.set('page', filters.page)
+      if (filters.referrer) params.set('referrer', filters.referrer)
     }
     const qs = params.toString()
 

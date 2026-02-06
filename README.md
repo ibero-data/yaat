@@ -119,12 +119,12 @@ sudo certbot --nginx -d your-domain.com
 
 Environment variables (or `.env` file):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `YAAT_PORT` | `3456` | HTTP server port |
-| `YAAT_DATA_DIR` | `./data` | Database storage directory |
-| `YAAT_JWT_SECRET` | (random) | JWT signing secret (auto-generated if not set) |
-| `YAAT_SECURE_COOKIES` | `false` | Set to `true` only if running HTTPS directly (not behind proxy) |
+| Variable              | Default  | Description                                                     |
+| --------------------- | -------- | --------------------------------------------------------------- |
+| `YAAT_PORT`           | `3456`   | HTTP server port                                                |
+| `YAAT_DATA_DIR`       | `./data` | Database storage directory                                      |
+| `YAAT_JWT_SECRET`     | (random) | JWT signing secret (auto-generated if not set)                  |
+| `YAAT_SECURE_COOKIES` | `false`  | Set to `true` only if running HTTPS directly (not behind proxy) |
 
 ## Tracking Setup
 
@@ -163,18 +163,18 @@ The tracker automatically collects:
 
 ## Pricing
 
-| Feature | Community | Pro | Enterprise |
-|---------|:---------:|:---:|:----------:|
-| Core Analytics | ✓ | ✓ | ✓ |
-| Unlimited Domains | ✓ | ✓ | ✓ |
-| Bot Analysis | ✓ | ✓ | ✓ |
-| Core Web Vitals | - | ✓ | ✓ |
-| Error Tracking | - | ✓ | ✓ |
-| Data Export | - | ✓ | ✓ |
-| Ad Fraud Detection | - | - | ✓ |
-| Multi-User | - | - | ✓ |
-| Priority Support | - | - | ✓ |
-| **Price** | **Free** | **€99/year** | **€299/year** |
+| Feature            | Community |     Pro      |  Enterprise   |
+| ------------------ | :-------: | :----------: | :-----------: |
+| Core Analytics     |     ✓     |      ✓       |       ✓       |
+| Unlimited Domains  |     ✓     |      ✓       |       ✓       |
+| Bot Analysis       |     ✓     |      ✓       |       ✓       |
+| Core Web Vitals    |     -     |      ✓       |       ✓       |
+| Error Tracking     |     -     |      ✓       |       ✓       |
+| Data Export        |     -     |      ✓       |       ✓       |
+| Ad Fraud Detection |     -     |      -       |       ✓       |
+| Multi-User         |     -     |      -       |       ✓       |
+| Priority Support   |     -     |      -       |       ✓       |
+| **Price**          | **Free**  | **€99/year** | **€299/year** |
 
 [Get a License](https://ibero.dev/yaat)
 
@@ -278,7 +278,7 @@ You are free to use, modify, and distribute this software under the terms of the
 ## Support
 
 - Issues: [github.com/ibero-data/yaat/issues](https://github.com/ibero-data/yaat/issues)
-- Website: [ibero.dev/yaat](https://ibero.dev/yaat)
+- Website: [ibero.dev/yaat](https://yaat.io)
 
 ---
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
-import { useAnalytics } from '../hooks/useAnalytics'
+import { useAnalytics, type AnalyticsFilters } from '../hooks/useAnalytics'
 import { useDateRangeStore, paramsToDateRange } from '../stores/useDateRangeStore'
 import { useRealtime } from '../hooks/useRealtime'
 import { useLicense } from '../hooks/useLicense'
@@ -39,6 +39,8 @@ import {
   Megaphone,
   Zap,
   Link2,
+  X,
+  Filter,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -111,9 +113,11 @@ function StatCard({
 function ProgressList({
   items,
   colorClass = 'bg-primary',
+  onItemClick,
 }: {
   items: { label: string; value: number; percentage: number }[]
   colorClass?: string
+  onItemClick?: (label: string) => void
 }) {
   if (items.length === 0) {
     return (
@@ -124,7 +128,11 @@ function ProgressList({
   return (
     <div className="space-y-4">
       {items.map((item, i) => (
-        <div key={i} className="space-y-2">
+        <div
+          key={i}
+          className={`space-y-2 ${onItemClick ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-lg transition-colors' : ''}`}
+          onClick={onItemClick ? () => onItemClick(item.label) : undefined}
+        >
           <div className="flex items-center justify-between text-sm gap-2">
             <span className="text-foreground truncate flex-1 font-medium">
               {item.label}
@@ -154,6 +162,25 @@ export function Dashboard() {
 
   const { dateRange, setDateRange, selectedPreset, setPreset } = useDateRangeStore()
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [filters, setFilters] = useState<AnalyticsFilters>({})
+
+  const setFilter = useCallback((key: keyof AnalyticsFilters, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }, [])
+
+  const removeFilter = useCallback((key: keyof AnalyticsFilters) => {
+    setFilters(prev => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }, [])
+
+  const clearFilters = useCallback(() => {
+    setFilters({})
+  }, [])
+
+  const hasFilters = Object.keys(filters).length > 0
 
   // Initialize from URL params on first load
   useEffect(() => {
@@ -178,9 +205,25 @@ export function Dashboard() {
         setSelectedDomain(domainFromUrl)
       }
     }
+
+    // Set filters from URL if present
+    const urlFilters: AnalyticsFilters = {}
+    const countryParam = searchParams.get('country')
+    const browserParam = searchParams.get('browser')
+    const deviceParam = searchParams.get('device')
+    const pageParam = searchParams.get('page')
+    const referrerParam = searchParams.get('referrer')
+    if (countryParam) urlFilters.country = countryParam
+    if (browserParam) urlFilters.browser = browserParam
+    if (deviceParam) urlFilters.device = deviceParam
+    if (pageParam) urlFilters.page = pageParam
+    if (referrerParam) urlFilters.referrer = referrerParam
+    if (Object.keys(urlFilters).length > 0) {
+      setFilters(urlFilters)
+    }
   }, [searchParams, domains, setDateRange, setPreset, setSelectedDomain])
 
-  // Update URL when date range or domain changes
+  // Update URL when date range, domain, or filters change
   useEffect(() => {
     const params = new URLSearchParams()
     if (dateRange?.from && dateRange?.to) {
@@ -190,14 +233,17 @@ export function Dashboard() {
     if (selectedDomain) {
       params.set('domain', selectedDomain.domain)
     }
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) params.set(key, value)
+    }
     setSearchParams(params, { replace: true })
-  }, [dateRange, selectedDomain, setSearchParams])
+  }, [dateRange, selectedDomain, filters, setSearchParams])
 
   const handleRefresh = useCallback(async () => {
     const domainFilter = selectedDomain?.domain || undefined
-    await refresh(dateRange, domainFilter)
+    await refresh(dateRange, domainFilter, filters)
     setLastRefresh(new Date())
-  }, [dateRange, selectedDomain, refresh])
+  }, [dateRange, selectedDomain, filters, refresh])
 
   // Real-time updates with 5s debounce - only refresh if viewing recent data
   const { connected, lastEvent } = useRealtime({
@@ -217,7 +263,7 @@ export function Dashboard() {
 
   useEffect(() => {
     handleRefresh()
-  }, [dateRange, selectedDomain]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dateRange, selectedDomain, filters]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (
@@ -235,6 +281,15 @@ export function Dashboard() {
         </Card>
       </div>
     )
+  }
+
+  const calcTrend = (current: number, prev: number | undefined) => {
+    if (prev === undefined || prev === 0) return { trend: undefined, trendUp: undefined }
+    const pct = ((current - prev) / prev) * 100
+    return {
+      trend: `${Math.abs(pct).toFixed(1)}%`,
+      trendUp: pct >= 0,
+    }
   }
 
   const getRelativeTime = (date: Date) => {
@@ -402,6 +457,34 @@ export function Dashboard() {
         </Card>
       )}
 
+      {/* Active filters bar */}
+      {hasFilters && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Filtered by:</span>
+          {Object.entries(filters).map(([key, value]) => (
+            <span
+              key={key}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+            >
+              <span className="capitalize">{key}:</span> {value}
+              <button
+                onClick={() => removeFilter(key as keyof AnalyticsFilters)}
+                className="ml-0.5 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard
@@ -413,32 +496,40 @@ export function Dashboard() {
         <StatCard
           title="Unique Visitors"
           value={formatNumber(data.overview?.unique_visitors ?? 0)}
-          subtitle="Selected period"
+          subtitle="vs. prev period"
           icon={Users}
+          {...calcTrend(data.overview?.unique_visitors ?? 0, data.overview?.prev_unique_visitors)}
         />
         <StatCard
           title="Pageviews"
           value={formatNumber(data.overview?.pageviews ?? 0)}
-          subtitle="Selected period"
+          subtitle="vs. prev period"
           icon={Eye}
+          {...calcTrend(data.overview?.pageviews ?? 0, data.overview?.prev_pageviews)}
         />
         <StatCard
           title="Sessions"
           value={formatNumber(data.overview?.sessions ?? 0)}
-          subtitle="Selected period"
+          subtitle="vs. prev period"
           icon={MousePointerClick}
+          {...calcTrend(data.overview?.sessions ?? 0, data.overview?.prev_sessions)}
         />
         <StatCard
           title="Bounce Rate"
           value={`${(data.overview?.bounce_rate ?? 0).toFixed(1)}%`}
-          subtitle="Single page visits"
+          subtitle="vs. prev period"
           icon={TrendingDown}
+          {...(() => {
+            const t = calcTrend(data.overview?.bounce_rate ?? 0, data.overview?.prev_bounce_rate)
+            return { trend: t.trend, trendUp: t.trendUp !== undefined ? !t.trendUp : undefined }
+          })()}
         />
         <StatCard
           title="Avg. Session"
           value={formatDuration(data.overview?.avg_session_seconds ?? 0)}
-          subtitle="Time on site"
+          subtitle="vs. prev period"
           icon={Clock}
+          {...calcTrend(data.overview?.avg_session_seconds ?? 0, data.overview?.prev_avg_session_seconds)}
         />
       </div>
 
@@ -519,7 +610,7 @@ export function Dashboard() {
             <CardDescription>Most visited pages</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProgressList items={topPagesData} colorClass="bg-chart-1" />
+            <ProgressList items={topPagesData} colorClass="bg-chart-1" onItemClick={(label) => setFilter('page', label)} />
           </CardContent>
         </Card>
 
@@ -530,7 +621,7 @@ export function Dashboard() {
             <CardDescription>Where your visitors come from</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProgressList items={referrersData} colorClass="bg-chart-2" />
+            <ProgressList items={referrersData} colorClass="bg-chart-2" onItemClick={(label) => { if (label !== 'Direct / None') setFilter('referrer', label) }} />
           </CardContent>
         </Card>
       </div>
@@ -551,7 +642,7 @@ export function Dashboard() {
                     ? ((device.visitors / totalDeviceVisitors) * 100).toFixed(1)
                     : '0'
                   return (
-                    <div key={i} className="flex items-center justify-between">
+                    <div key={i} className="flex items-center justify-between cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => setFilter('device', device.device || 'Unknown')}>
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-lg bg-muted">
                           <Icon className="h-4 w-4 text-muted-foreground" />
@@ -578,7 +669,7 @@ export function Dashboard() {
             <CardTitle className="text-lg font-semibold">Browsers</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProgressList items={browsersData} colorClass="bg-chart-4" />
+            <ProgressList items={browsersData} colorClass="bg-chart-4" onItemClick={(label) => setFilter('browser', label)} />
           </CardContent>
         </Card>
 
@@ -591,7 +682,7 @@ export function Dashboard() {
             <div className="space-y-4">
               {geoData.length > 0 ? (
                 geoData.map((geo, i) => (
-                  <div key={i} className="space-y-2">
+                  <div key={i} className="space-y-2 cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-lg transition-colors" onClick={() => setFilter('country', geo.label)}>
                     <div className="flex items-center justify-between text-sm gap-2">
                       <div className="flex items-center gap-2">
                         <Globe className="h-4 w-4 text-muted-foreground" />
