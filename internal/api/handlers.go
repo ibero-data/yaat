@@ -250,6 +250,20 @@ func (h *Handlers) parseEvent(raw map[string]interface{}, sessionID string, enri
 		botSignals = bot.SignalsToJSON(result.Signals)
 	}
 
+	// Check for suspicious path patterns (attack scanners, exploit probes)
+	if pathSignal := bot.ScoreSuspiciousPath(parsedURL.Path); pathSignal != nil {
+		botResult += pathSignal.Weight
+		if botResult > 100 {
+			botResult = 100
+		}
+		botCategory = bot.ScoreToCategory(botResult)
+		// Re-serialize signals with the path signal added
+		var signals []bot.Signal
+		json.Unmarshal([]byte(botSignals), &signals)
+		signals = append(signals, *pathSignal)
+		botSignals = bot.SignalsToJSON(signals)
+	}
+
 	// Set geo coordinates if available
 	var geoLat, geoLon *float64
 	if enriched.GeoLatitude != 0 {
@@ -1544,11 +1558,86 @@ func (h *Handlers) GetStatsBots(w http.ResponseWriter, r *http.Request) {
 	}
 	timeRows.Close()
 
+	// Top bots detail list
+	var botRows *sql.Rows
+	if domain != "" {
+		botRows, err = h.db.Conn().Query(`
+			SELECT
+				COALESCE(browser_name, 'Unknown') as browser_name,
+				bot_category,
+				bot_score,
+				bot_signals,
+				COUNT(*) as hits,
+				COUNT(DISTINCT visitor_hash) as visitors,
+				COUNT(DISTINCT session_id) as sessions,
+				MAX(timestamp) as last_seen
+			FROM events
+			WHERE timestamp >= ? AND timestamp <= ? AND domain = ? AND bot_category != 'human'
+			GROUP BY browser_name, bot_category, bot_score
+			ORDER BY hits DESC
+			LIMIT 50
+		`, startMs, endMs, domain)
+	} else {
+		botRows, err = h.db.Conn().Query(`
+			SELECT
+				COALESCE(browser_name, 'Unknown') as browser_name,
+				bot_category,
+				bot_score,
+				bot_signals,
+				COUNT(*) as hits,
+				COUNT(DISTINCT visitor_hash) as visitors,
+				COUNT(DISTINCT session_id) as sessions,
+				MAX(timestamp) as last_seen
+			FROM events
+			WHERE timestamp >= ? AND timestamp <= ? AND bot_category != 'human'
+			GROUP BY browser_name, bot_category, bot_score
+			ORDER BY hits DESC
+			LIMIT 50
+		`, startMs, endMs)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	topBots := make([]map[string]interface{}, 0)
+	for botRows.Next() {
+		var browserName, botCat, botSigs string
+		var score int
+		var hits, visitors, sessions, lastSeen int64
+		botRows.Scan(&browserName, &botCat, &score, &botSigs, &hits, &visitors, &sessions, &lastSeen)
+
+		// Extract signal names from JSON
+		var rawSignals []struct {
+			Name  string `json:"name"`
+			Value string `json:"value,omitempty"`
+		}
+		signalNames := make([]string, 0)
+		if json.Unmarshal([]byte(botSigs), &rawSignals) == nil {
+			for _, s := range rawSignals {
+				signalNames = append(signalNames, s.Name)
+			}
+		}
+
+		topBots = append(topBots, map[string]interface{}{
+			"browser_name": browserName,
+			"category":     botCat,
+			"score":        score,
+			"signals":      signalNames,
+			"hits":         hits,
+			"visitors":     visitors,
+			"sessions":     sessions,
+			"last_seen":    lastSeen,
+		})
+	}
+	botRows.Close()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"categories":         categories,
 		"score_distribution": scoreDistribution,
 		"timeseries":         timeseries,
+		"top_bots":           topBots,
 	})
 }
 

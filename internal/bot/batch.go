@@ -61,6 +61,10 @@ func (b *BatchAnalyzer) analyze() {
 	if count > 0 {
 		log.Printf("Bot batch analysis: updated %d sessions", count)
 	}
+
+	if err := b.MaterializeSessions(since); err != nil {
+		log.Printf("Materialize sessions error: %v", err)
+	}
 }
 
 // analyzeZeroInteraction detects sessions with no interaction
@@ -89,6 +93,7 @@ func (b *BatchAnalyzer) analyzeZeroInteraction(since time.Time) int {
 				AND COALESCE(MAX(page_duration), 0) < 1000
 		)
 		AND bot_score < 75
+		AND bot_category != 'good_bot'
 		AND bot_signals NOT LIKE '%zero_interaction%'
 	`
 
@@ -120,6 +125,7 @@ func (b *BatchAnalyzer) analyzeImpossibleSpeed(since time.Time) int {
 				COUNT(*) > 50
 				AND (MAX(timestamp) - MIN(timestamp)) < 10000
 		)
+		AND bot_category != 'good_bot'
 		AND bot_signals NOT LIKE '%impossible_speed%'
 	`
 
@@ -157,6 +163,7 @@ func (b *BatchAnalyzer) analyzePerfectTiming(since time.Time) int {
 				COUNT(*) >= 10
 				AND (MAX(e.timestamp) - MIN(e.timestamp)) / COUNT(*) < 100
 		)
+		AND bot_category != 'good_bot'
 		AND bot_signals NOT LIKE '%perfect_timing%'
 	`
 

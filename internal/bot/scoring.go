@@ -27,6 +27,7 @@ const (
 	WeightTimezoneMismatch = 10 // Client TZ != IP geo TZ
 	WeightNoPlugins       = 5  // No plugins detected
 	WeightNoLanguages     = 5  // No languages array
+	WeightSuspiciousPath  = 30 // Known attack/exploit path patterns
 )
 
 // Signal represents a detected bot signal
@@ -130,8 +131,8 @@ func CalculateScore(userAgent string, clientSignals *ClientSignals, isDatacenter
 			result.Signals = append(result.Signals, Signal{Name: "headless", Weight: WeightHeadlessBrowser})
 		}
 
-		// Screen anomaly detection
-		if !clientSignals.ScreenValid || clientSignals.ScreenWidth == 0 || clientSignals.ScreenHeight == 0 {
+		// Screen anomaly detection - only flag when both dimensions are zero (headless/bot)
+		if clientSignals.ScreenWidth == 0 && clientSignals.ScreenHeight == 0 {
 			result.Score += WeightScreenAnomaly
 			result.Signals = append(result.Signals, Signal{Name: "screen_anomaly", Weight: WeightScreenAnomaly})
 		}
@@ -194,6 +195,38 @@ func SignalsToJSON(signals []Signal) string {
 		return "[]"
 	}
 	return string(data)
+}
+
+// Suspicious path prefixes commonly targeted by scanners and bots
+var suspiciousPathPrefixes = []string{
+	"/wp-admin", "/wp-login", "/wp-includes", "/wp-content/uploads",
+	"/xmlrpc.php",
+	"/.env", "/.git", "/.svn", "/.htaccess", "/.htpasswd",
+	"/cgi-bin", "/shell", "/cmd", "/eval",
+	"/phpmyadmin", "/pma", "/myadmin",
+	"/admin/config", "/backup", "/dump",
+}
+
+// ScoreSuspiciousPath checks if a URL path matches known attack patterns
+func ScoreSuspiciousPath(path string) *Signal {
+	if path == "" {
+		return nil
+	}
+	p := strings.ToLower(path)
+
+	// Check path prefixes
+	for _, prefix := range suspiciousPathPrefixes {
+		if strings.HasPrefix(p, prefix) {
+			return &Signal{Name: "suspicious_path", Weight: WeightSuspiciousPath, Value: prefix}
+		}
+	}
+
+	// Check for .php extension (on non-PHP analytics sites, this is always a probe)
+	if strings.HasSuffix(p, ".php") {
+		return &Signal{Name: "suspicious_path", Weight: WeightSuspiciousPath, Value: ".php"}
+	}
+
+	return nil
 }
 
 // hasBrowserIndicator checks if UA contains browser indicators

@@ -33,10 +33,22 @@ interface TimeseriesData {
   good_bots: number
 }
 
+interface BotDetail {
+  browser_name: string
+  category: string
+  score: number
+  signals: string[]
+  hits: number
+  visitors: number
+  sessions: number
+  last_seen: number
+}
+
 interface BotData {
   categories: BotCategory[]
   score_distribution: ScoreDistribution[]
   timeseries: TimeseriesData[]
+  top_bots: BotDetail[]
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -44,6 +56,33 @@ const CATEGORY_LABELS: Record<string, string> = {
   good_bot: 'Good Bots',
   suspicious: 'Suspicious',
   bad_bot: 'Bad Bots',
+}
+
+const SIGNAL_LABELS: Record<string, string> = {
+  headless_browser: 'Headless',
+  webdriver: 'Webdriver',
+  headless: 'Headless UA',
+  screen_anomaly: 'Screen 0x0',
+  no_plugins: 'No Plugins',
+  datacenter_ip: 'Datacenter IP',
+  zero_interaction: 'No Interaction',
+  impossible_speed: 'Impossible Speed',
+  perfect_timing: 'Robotic Timing',
+  known_good_bot: 'Known Bot',
+  automation_ua: 'Automation UA',
+  short_ua: 'Short UA',
+  empty_ua: 'Empty UA',
+  missing_accept_language: 'No Accept-Language',
+  suspicious_path: 'Suspicious Path',
+  phantom: 'PhantomJS',
+  selenium: 'Selenium',
+  no_languages: 'No Languages',
+}
+
+const CATEGORY_BADGE_STYLES: Record<string, string> = {
+  good_bot: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+  bad_bot: 'bg-red-500/15 text-red-600 dark:text-red-400',
+  suspicious: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
 }
 
 const pieChartConfig = {
@@ -405,6 +444,76 @@ export function BotAnalysis() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Detected Bots Table */}
+      {data?.top_bots && data.top_bots.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Detected Bots</CardTitle>
+            <CardDescription>Individual bot visitors detected on your site</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bot / User Agent</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Category</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Score</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Detection Signals</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Hits</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Visitors</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Last Seen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.top_bots.map((bot, idx) => (
+                    <tr key={`${bot.browser_name}-${bot.score}-${idx}`} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium">{bot.browser_name || 'Unknown'}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_BADGE_STYLES[bot.category] || 'bg-muted text-muted-foreground'}`}>
+                          {CATEGORY_LABELS[bot.category] || bot.category}
+                        </span>
+                      </td>
+                      <td className="text-center py-3 px-4">
+                        <span className={`inline-flex items-center justify-center w-10 h-6 rounded text-xs font-bold ${
+                          bot.score >= 75 ? 'bg-red-500/15 text-red-600 dark:text-red-400' :
+                          bot.score >= 50 ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400' :
+                          'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'
+                        }`}>
+                          {bot.score}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {bot.signals.map((signal) => (
+                            <span
+                              key={signal}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
+                            >
+                              {SIGNAL_LABELS[signal] || signal}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="text-right py-3 px-4 tabular-nums">{formatNumber(bot.hits)}</td>
+                      <td className="text-right py-3 px-4 tabular-nums">{formatNumber(bot.visitors)}</td>
+                      <td className="text-right py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(bot.last_seen).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

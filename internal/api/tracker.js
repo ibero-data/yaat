@@ -125,6 +125,7 @@
       phantom: (window._phantom || window.callPhantom) ? 1 : 0,
       selenium: (window._selenium || window.__selenium_unwrapped || document.__selenium_unwrapped) ? 1 : 0,
       headless: /HeadlessChrome/.test(navigator.userAgent) ? 1 : 0,
+      screen_valid: (screen.width > 0 && screen.height > 0) ? 1 : 0,
       screen_width: screen.width || 0,
       screen_height: screen.height || 0,
       plugins: navigator.plugins ? navigator.plugins.length : 0,
