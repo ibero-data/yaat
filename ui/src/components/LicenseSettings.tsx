@@ -1,45 +1,31 @@
-import { useState, useRef } from 'react'
-import { useLicense } from '../hooks/useLicense'
+import { useRef } from 'react'
+import { useLicense, useUploadLicense, useRemoveLicense } from '../hooks/useLicenseQuery'
 import { Upload, Trash2, Check, X, Shield, AlertTriangle } from 'lucide-react'
 
 export function LicenseSettings() {
-  const { license, loading, uploadLicense, removeLicense } = useLicense()
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { license, isLoading } = useLicense()
+  const uploadMutation = useUploadLicense()
+  const removeMutation = useRemoveLicense()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
-    setUploading(true)
-    setError(null)
-
-    try {
-      await uploadLicense(file)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    }
+    uploadMutation.mutate(file, {
+      onSettled: () => {
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      },
+    })
   }
 
   async function handleRemove() {
     if (!confirm('Are you sure you want to remove the license? You will revert to the Community plan.')) {
       return
     }
-
-    try {
-      await removeLicense()
-    } catch (err) {
-      setError((err as Error).message)
-    }
+    removeMutation.mutate()
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="animate-pulse">
         <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/4 mb-4"></div>
@@ -175,12 +161,8 @@ export function LicenseSettings() {
             htmlFor="license-upload"
             className="inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer disabled:opacity-50"
           >
-            {uploading ? 'Uploading...' : 'Choose File'}
+            {uploadMutation.isPending ? 'Uploading...' : 'Choose File'}
           </label>
-
-          {error && (
-            <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
         </div>
       </div>
 

@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useLicense } from '@/hooks/useLicense'
+import { useLicense } from '@/hooks/useLicenseQuery'
+import { fetchAPI, ApiError } from '@/lib/api'
 import { Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users as UsersIcon, Plus, Trash2, Loader2, Shield, Eye, AlertCircle, X } from 'lucide-react'
+import { Users as UsersIcon, Plus, Trash2, Loader2, Shield, Eye, AlertCircle, X, Pencil } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -43,22 +45,24 @@ export function UsersSettings() {
     role: 'viewer' as 'admin' | 'viewer',
   })
 
+  // Edit user state
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', role: '' as 'admin' | 'viewer', password: '' })
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
   const maxUsers = getLimit('max_users')
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('/api/users', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data || [])
-      } else if (response.status === 402) {
+      const data = await fetchAPI<User[]>('/api/users')
+      setUsers(data || [])
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
         setError('User management requires a Pro license')
       } else {
         setError('Failed to load users')
       }
-    } catch (err) {
-      console.error('Failed to fetch users:', err)
-      setError('Failed to load users')
     } finally {
       setLoading(false)
     }
@@ -114,10 +118,9 @@ export function UsersSettings() {
     setCreating(true)
 
     try {
-      const response = await fetch('/api/users', {
+      await fetchAPI('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           email: newUser.email,
           name: newUser.name,
@@ -125,11 +128,6 @@ export function UsersSettings() {
           role: newUser.role,
         }),
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to create user')
-      }
 
       setNewUser({
         email: '',
@@ -149,7 +147,7 @@ export function UsersSettings() {
 
   async function handleDeleteUser(userId: string, userEmail: string) {
     if (userId === currentUser?.id) {
-      alert('You cannot delete your own account')
+      toast.error('You cannot delete your own account')
       return
     }
 
@@ -158,19 +156,49 @@ export function UsersSettings() {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to delete user')
-      }
-
+      await fetchAPI(`/api/users/${userId}`, { method: 'DELETE' })
       fetchUsers()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete user')
+      toast.error('Failed to delete user', { description: err instanceof Error ? err.message : undefined })
+    }
+  }
+
+  function startEditUser(user: User) {
+    setEditingUser(user)
+    setEditForm({ name: user.name || '', role: user.role, password: '' })
+    setEditError(null)
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingUser) return
+    setEditError(null)
+
+    if (editForm.password && editForm.password.length < 8) {
+      setEditError('Password must be at least 8 characters')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      await fetchAPI(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          role: editForm.role,
+          ...(editForm.password ? { password: editForm.password } : {}),
+        }),
+      })
+
+      toast.success('User updated')
+      setEditingUser(null)
+      fetchUsers()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update user')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -318,6 +346,93 @@ export function UsersSettings() {
         </Card>
       )}
 
+      {/* Edit user form */}
+      {editingUser && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Edit User</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setEditingUser(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CardDescription>
+              Editing {editingUser.email}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleEditUser} className="space-y-4">
+              {editError && (
+                <div className="p-3 rounded text-sm bg-destructive/10 text-destructive">
+                  {editError}
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input
+                    type="text"
+                    placeholder="Name"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select
+                    value={editForm.role}
+                    onValueChange={(value: 'admin' | 'viewer') => setEditForm({ ...editForm, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4" />
+                          Viewer
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="admin">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          Admin
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>New Password (optional)</Label>
+                  <Input
+                    type="password"
+                    placeholder="Leave blank to keep current"
+                    value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Only fill this if you want to change the password.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       {/* User limit warning */}
       {maxUsers !== -1 && users.length >= maxUsers && (
         <Card className="border-yellow-500/50 bg-yellow-500/5">
@@ -402,6 +517,13 @@ export function UsersSettings() {
                     <span className="text-xs text-muted-foreground hidden sm:block">
                       {formatDate(user.created_at)}
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditUser(user)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {user.id !== currentUser?.id && (
                       <Button
                         variant="ghost"

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { fetchAPI } from '@/lib/api'
 import { Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { SettingsLayout } from './SettingsLayout'
 
 interface EmailSettingsData {
@@ -37,13 +39,10 @@ export function EmailSettings() {
 
   const fetchEmailSettings = useCallback(async () => {
     try {
-      const response = await fetch('/api/settings/email', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setEmailSettings(data)
-      }
+      const data = await fetchAPI<EmailSettingsData>('/api/settings/email')
+      setEmailSettings(data)
     } catch (err) {
-      console.error('Failed to fetch email settings:', err)
+      toast.error('Failed to load email settings')
     }
   }, [])
 
@@ -64,17 +63,11 @@ export function EmailSettings() {
     setEmailResult(null)
 
     try {
-      const response = await fetch('/api/settings/email', {
+      await fetchAPI('/api/settings/email', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(editedEmailSettings)
+        body: JSON.stringify(editedEmailSettings),
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to save settings')
-      }
 
       setEditedEmailSettings({})
       setEmailResult('Settings saved successfully')
@@ -92,22 +85,18 @@ export function EmailSettings() {
 
     try {
       if (hasEmailChanges) {
-        await fetch('/api/settings/email', {
+        await fetchAPI('/api/settings/email', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(editedEmailSettings)
+          body: JSON.stringify(editedEmailSettings),
         })
         setEditedEmailSettings({})
         fetchEmailSettings()
       }
 
-      const response = await fetch('/api/settings/email/test', {
+      const result = await fetchAPI<{ success: boolean; message: string }>('/api/settings/email/test', {
         method: 'POST',
-        credentials: 'include'
       })
-
-      const result = await response.json()
       setEmailTestResult(result)
     } catch (err) {
       setEmailTestResult({

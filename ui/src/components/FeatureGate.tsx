@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useLicense } from '../hooks/useLicense'
+import { useLicense } from '../hooks/useLicenseQuery'
 import { Lock } from 'lucide-react'
 
 interface FeatureGateProps {

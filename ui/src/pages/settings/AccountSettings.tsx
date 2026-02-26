@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { fetchAPI } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SettingsLayout } from './SettingsLayout'
 
 export function AccountSettings() {
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
 
   return (
     <SettingsLayout title="Account" description="Manage your account settings">
@@ -30,16 +31,14 @@ export function AccountSettings() {
         </CardContent>
       </Card>
 
-      {isAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChangePasswordForm />
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Change Password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
+        </CardContent>
+      </Card>
     </SettingsLayout>
   )
 }
@@ -70,20 +69,14 @@ function ChangePasswordForm() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/password', {
+      await fetchAPI('/api/auth/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           current_password: currentPassword,
-          new_password: newPassword
-        })
+          new_password: newPassword,
+        }),
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to change password')
-      }
 
       setSuccess(true)
       setCurrentPassword('')

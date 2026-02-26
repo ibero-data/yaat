@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -69,8 +70,8 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 	r.Get("/s.js", h.ServeTrackerScript)
 	r.Get("/s/tracker.js", h.ServeTrackerScript) // Legacy URL
 
-	// Ingest endpoint
-	r.Post("/i", h.Ingest)
+	// Ingest endpoint (rate limited: 100 req/min/IP)
+	r.With(RateLimit(100, time.Minute)).Post("/i", h.Ingest)
 
 	// Health check
 	r.Get("/health", h.Health)
@@ -120,6 +121,14 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 				r.Post("/settings/geoip/download", h.DownloadGeoIPDatabase)
 			})
 
+			// Email Settings (admin only)
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware.RequireAdmin)
+				r.Get("/settings/email", h.GetEmailSettings)
+				r.Put("/settings/email", h.UpdateEmailSettings)
+				r.Post("/settings/email/test", h.TestEmailSettings)
+			})
+
 			// Database access
 			r.Get("/db", h.ServeDatabase)
 			r.Get("/db/info", h.GetDatabaseInfo)
@@ -128,7 +137,6 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 			r.Get("/events/stream", h.EventStream)
 
 			// Stats endpoints
-			r.Get("/stats/summary", h.GetStatsSummary)
 			r.Get("/stats/overview", h.GetStatsOverview)
 			r.Get("/stats/timeseries", h.GetStatsTimeseries)
 			r.Get("/stats/pages", h.GetStatsPages)
@@ -152,14 +160,12 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 			r.Group(func(r chi.Router) {
 				r.Use(licensing.RequireFeature(licenseManager, licensing.FeaturePerformance))
 				r.Get("/stats/vitals", h.GetStatsVitals)
-				r.Get("/performance/summary", h.GetPerformanceSummary)
 			})
 
 			// Pro features - Error tracking
 			r.Group(func(r chi.Router) {
 				r.Use(licensing.RequireFeature(licenseManager, licensing.FeatureErrorTracking))
 				r.Get("/stats/errors", h.GetStatsErrors)
-				r.Get("/errors/summary", h.GetErrorsSummary)
 			})
 
 			// Pro features - Export
@@ -230,22 +236,3 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 	return r
 }
 
-// FileServer for embedded files
-func FileServer(r chi.Router, path string, root fs.FS) {
-	if strings.ContainsAny(path, "{}*") {
-		panic("FileServer does not permit URL parameters.")
-	}
-
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
-
-	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
-		rctx := chi.RouteContext(r.Context())
-		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
-		fsHandler := http.StripPrefix(pathPrefix, http.FileServer(http.FS(root)))
-		fsHandler.ServeHTTP(w, r)
-	})
-}

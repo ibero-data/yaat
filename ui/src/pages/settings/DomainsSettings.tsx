@@ -1,107 +1,51 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useDomain } from '@/contexts/DomainContext'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { useDomains, useCreateDomain, useDeleteDomain } from '@/hooks/useDomains'
+import { fetchAPI } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Globe, Copy, Trash2, Plus, Check } from 'lucide-react'
 import { SettingsLayout } from './SettingsLayout'
 
-interface Domain {
-  id: string
-  name: string
-  domain: string
-  site_id: string
-  is_active: boolean
-  created_at: number
-}
-
 export function DomainsSettings() {
-  const { refreshDomains } = useDomain()
-  const [domains, setDomains] = useState<Domain[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: domains, isLoading } = useDomains()
+  const createDomain = useCreateDomain()
+  const deleteDomain = useDeleteDomain()
   const [newDomain, setNewDomain] = useState({ name: '', domain: '' })
-  const [addingDomain, setAddingDomain] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-
-  const fetchDomains = useCallback(async () => {
-    try {
-      const response = await fetch('/api/domains', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setDomains(data)
-      }
-    } catch (err) {
-      console.error('Failed to fetch domains:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchDomains()
-  }, [fetchDomains])
 
   async function handleAddDomain(e: React.FormEvent) {
     e.preventDefault()
     if (!newDomain.name || !newDomain.domain) return
-
-    setAddingDomain(true)
-    try {
-      const response = await fetch('/api/domains', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(newDomain)
-      })
-
-      if (response.ok) {
-        setNewDomain({ name: '', domain: '' })
-        fetchDomains()
-        refreshDomains()
-      }
-    } catch (err) {
-      console.error('Failed to add domain:', err)
-    } finally {
-      setAddingDomain(false)
-    }
+    createDomain.mutate(newDomain, {
+      onSuccess: () => setNewDomain({ name: '', domain: '' }),
+    })
   }
 
   async function handleDeleteDomain(id: string) {
     if (!confirm('Are you sure you want to delete this domain?')) return
-
-    try {
-      await fetch(`/api/domains/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-      fetchDomains()
-      refreshDomains()
-    } catch (err) {
-      console.error('Failed to delete domain:', err)
-    }
+    deleteDomain.mutate(id)
   }
 
   async function copySnippet(id: string) {
     try {
-      const response = await fetch(`/api/domains/${id}/snippet`, { credentials: 'include' })
-      const data = await response.json()
+      const data = await fetchAPI<{ snippet: string }>(`/api/domains/${id}/snippet`)
       await navigator.clipboard.writeText(data.snippet)
       setCopiedId(id)
+      toast.success('Snippet copied to clipboard')
       setTimeout(() => setCopiedId(null), 2000)
-    } catch (err) {
-      console.error('Failed to copy snippet:', err)
+    } catch {
+      toast.error('Failed to copy snippet')
     }
   }
 
   return (
     <SettingsLayout title="Domains" description="Manage your tracked domains">
-      {/* Add Domain Form */}
       <Card>
         <CardHeader>
           <CardTitle>Add Domain</CardTitle>
-          <CardDescription>
-            Register a domain to start tracking analytics
-          </CardDescription>
+          <CardDescription>Register a domain to start tracking analytics</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddDomain} className="flex gap-4">
@@ -119,7 +63,7 @@ export function DomainsSettings() {
                 onChange={(e) => setNewDomain({ ...newDomain, domain: e.target.value })}
               />
             </div>
-            <Button type="submit" disabled={addingDomain}>
+            <Button type="submit" disabled={createDomain.isPending}>
               <Plus className="h-4 w-4 mr-2" />
               Add
             </Button>
@@ -127,26 +71,20 @@ export function DomainsSettings() {
         </CardContent>
       </Card>
 
-      {/* Domain List */}
       <Card>
         <CardHeader>
           <CardTitle>Registered Domains</CardTitle>
-          <CardDescription>
-            Click the copy button to get the tracking snippet for each domain
-          </CardDescription>
+          <CardDescription>Click the copy button to get the tracking snippet for each domain</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isLoading ? (
             <p className="text-muted-foreground">Loading...</p>
-          ) : domains.length === 0 ? (
+          ) : !domains || domains.length === 0 ? (
             <p className="text-muted-foreground">No domains registered yet.</p>
           ) : (
             <div className="space-y-3">
               {domains.map((domain) => (
-                <div
-                  key={domain.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border"
-                >
+                <div key={domain.id} className="flex items-center justify-between p-4 rounded-lg border border-border">
                   <div className="flex items-center gap-3">
                     <Globe className="h-5 w-5 text-muted-foreground" />
                     <div>
@@ -156,28 +94,14 @@ export function DomainsSettings() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copySnippet(domain.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => copySnippet(domain.id)}>
                       {copiedId === domain.id ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Copied
-                        </>
+                        <><Check className="h-4 w-4 mr-1" />Copied</>
                       ) : (
-                        <>
-                          <Copy className="h-4 w-4 mr-1" />
-                          Copy Snippet
-                        </>
+                        <><Copy className="h-4 w-4 mr-1" />Copy Snippet</>
                       )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteDomain(domain.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteDomain(domain.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -188,7 +112,6 @@ export function DomainsSettings() {
         </CardContent>
       </Card>
 
-      {/* Tracking Snippet Example */}
       <Card>
         <CardHeader>
           <CardTitle>Tracking Snippet</CardTitle>

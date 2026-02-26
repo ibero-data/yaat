@@ -304,6 +304,23 @@ func (db *DB) Migrate() error {
 					('listen_addr', ':3456', strftime('%s', 'now') * 1000);
 			`,
 		},
+		{
+			version: 12,
+			sql: `
+				-- Composite index for the most common stat query pattern:
+				-- WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 0 AND domain = ?
+				CREATE INDEX IF NOT EXISTS idx_events_ts_domain_bot
+					ON events(timestamp, domain, is_bot);
+
+				-- Composite index for pageview stats (adds event_type)
+				CREATE INDEX IF NOT EXISTS idx_events_ts_type_bot
+					ON events(timestamp, event_type, is_bot);
+
+				-- Composite for visitor_sessions queries
+				CREATE INDEX IF NOT EXISTS idx_vsessions_domain_start
+					ON visitor_sessions(domain, start_time);
+			`,
+		},
 	}
 
 	for _, m := range migrations {

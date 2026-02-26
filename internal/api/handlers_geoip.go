@@ -75,7 +75,7 @@ func (h *Handlers) UpdateGeoIPSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 

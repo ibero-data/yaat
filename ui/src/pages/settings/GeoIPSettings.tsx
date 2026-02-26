@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { fetchAPI } from '@/lib/api'
 import { Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MapPin, Loader2, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { SettingsLayout } from './SettingsLayout'
 
 interface GeoIPSettingsData {
@@ -41,20 +43,14 @@ export function GeoIPSettings() {
 
   const fetchGeoipSettings = useCallback(async () => {
     try {
-      const [settingsRes, statusRes] = await Promise.all([
-        fetch('/api/settings/geoip', { credentials: 'include' }),
-        fetch('/api/settings/geoip/status', { credentials: 'include' })
+      const [settings, status] = await Promise.all([
+        fetchAPI<GeoIPSettingsData>('/api/settings/geoip'),
+        fetchAPI<GeoIPStatus>('/api/settings/geoip/status'),
       ])
-      if (settingsRes.ok) {
-        const data = await settingsRes.json()
-        setGeoipSettings(data)
-      }
-      if (statusRes.ok) {
-        const data = await statusRes.json()
-        setGeoipStatus(data)
-      }
+      setGeoipSettings(settings)
+      setGeoipStatus(status)
     } catch (err) {
-      console.error('Failed to fetch GeoIP settings:', err)
+      toast.error('Failed to load GeoIP settings')
     }
   }, [])
 
@@ -75,17 +71,11 @@ export function GeoIPSettings() {
     setGeoipResult(null)
 
     try {
-      const response = await fetch('/api/settings/geoip', {
+      await fetchAPI('/api/settings/geoip', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(editedGeoipSettings)
+        body: JSON.stringify(editedGeoipSettings),
       })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to save settings')
-      }
 
       setEditedGeoipSettings({})
       setGeoipResult('Settings saved successfully')
@@ -103,24 +93,15 @@ export function GeoIPSettings() {
 
     try {
       if (hasGeoipChanges) {
-        await fetch('/api/settings/geoip', {
+        await fetchAPI('/api/settings/geoip', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(editedGeoipSettings)
+          body: JSON.stringify(editedGeoipSettings),
         })
         setEditedGeoipSettings({})
       }
 
-      const response = await fetch('/api/settings/geoip/download', {
-        method: 'POST',
-        credentials: 'include'
-      })
-
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || 'Download failed')
-      }
+      await fetchAPI('/api/settings/geoip/download', { method: 'POST' })
 
       setGeoipResult('GeoIP database downloaded successfully!')
       fetchGeoipSettings()

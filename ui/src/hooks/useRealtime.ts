@@ -1,100 +1,72 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
-interface RealtimeEvent {
-  type: string
-  events: number
-  performance: number
-  errors: number
-  timestamp: number
-  last_event?: {
-    type: string
-    path: string
-    country: string
-  }
-}
+const MAX_RETRIES = 10
+const BASE_DELAY = 1000
+const MAX_DELAY = 60_000
 
-interface UseRealtimeOptions {
-  onNewEvents?: () => void
-  debounceMs?: number
-}
+export function useRealtime() {
+  const queryClient = useQueryClient()
+  const esRef = useRef<EventSource | null>(null)
+  const retriesRef = useRef(0)
+  const timerRef = useRef<number | null>(null)
+  const debounceRef = useRef<number | null>(null)
 
-export function useRealtime(options: UseRealtimeOptions = {}) {
-  const { onNewEvents, debounceMs = 5000 } = options
-
-  const [connected, setConnected] = useState(false)
-  const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null)
-  const [eventSource, setEventSource] = useState<EventSource | null>(null)
-  const debounceTimerRef = useRef<number | null>(null)
+  const invalidateAnalytics = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = window.setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    }, 5000)
+  }, [queryClient])
 
   const connect = useCallback(() => {
-    if (eventSource) {
-      eventSource.close()
+    if (esRef.current) {
+      esRef.current.close()
+      esRef.current = null
     }
 
     const es = new EventSource('/api/events/stream', { withCredentials: true })
+    esRef.current = es
 
     es.onopen = () => {
-      setConnected(true)
+      retriesRef.current = 0
     }
 
     es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as RealtimeEvent
-        if (data.type !== 'connected') {
-          setLastEvent(data)
-
-          // Debounced callback for data refresh
-          if (data.type === 'batch' && onNewEvents) {
-            if (debounceTimerRef.current) {
-              clearTimeout(debounceTimerRef.current)
-            }
-            debounceTimerRef.current = window.setTimeout(() => {
-              onNewEvents()
-            }, debounceMs)
-          }
+        const data = JSON.parse(event.data)
+        if (data.type === 'batch') {
+          invalidateAnalytics()
         }
-      } catch (e) {
-        console.error('SSE parse error:', e)
+      } catch {
+        // ignore parse errors
       }
     }
 
     es.onerror = () => {
-      setConnected(false)
       es.close()
-      // Reconnect after 5 seconds
-      setTimeout(connect, 5000)
-    }
+      esRef.current = null
 
-    setEventSource(es)
-  }, [eventSource, onNewEvents, debounceMs])
-
-  const disconnect = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
+      if (retriesRef.current < MAX_RETRIES) {
+        const delay = Math.min(
+          BASE_DELAY * Math.pow(2, retriesRef.current) + Math.random() * 1000,
+          MAX_DELAY,
+        )
+        retriesRef.current++
+        timerRef.current = window.setTimeout(connect, delay)
+      }
     }
-    if (eventSource) {
-      eventSource.close()
-      setEventSource(null)
-      setConnected(false)
-    }
-  }, [eventSource])
+  }, [invalidateAnalytics])
 
   useEffect(() => {
     connect()
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-      if (eventSource) {
-        eventSource.close()
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (esRef.current) {
+        esRef.current.close()
+        esRef.current = null
       }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  return {
-    connected,
-    lastEvent,
-    connect,
-    disconnect,
-  }
+  }, [connect])
 }

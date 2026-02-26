@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { fetchAPI } from '@/lib/api'
 import { Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,8 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   FileX2,
   Database,
   Table2,
@@ -155,8 +158,7 @@ export function Explorer() {
   // Fetch schema for autocomplete
   useEffect(() => {
     if (isAdmin) {
-      fetch('/api/explorer/schema', { credentials: 'include' })
-        .then(res => res.json())
+      fetchAPI<TableSchema>('/api/explorer/schema')
         .then(data => {
           setSchema(data)
           const tables = Object.keys(data)
@@ -192,18 +194,11 @@ export function Explorer() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/explorer/query', {
+      const data = await fetchAPI<QueryResult>('/api/explorer/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ query: query.trim() }),
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Query failed')
-      }
 
       setResult(data)
       addToHistory(query.trim())
@@ -529,7 +524,9 @@ export function Explorer() {
           {/* Stats */}
           {result && !loading && (
             <div className="flex items-center gap-2.5 text-xs text-muted-foreground ml-1">
-              <span className="font-medium tabular-nums">{totalRows.toLocaleString()} rows</span>
+              <span className="font-medium tabular-nums">
+                {totalRows.toLocaleString()} rows{totalRows === 1000 && <span className="text-yellow-600 ml-1">(limit reached)</span>}
+              </span>
               <span className="flex items-center gap-1 tabular-nums">
                 <Clock className="h-3 w-3" />
                 {result.duration_ms}ms
@@ -630,7 +627,7 @@ export function Explorer() {
 
           {/* Results */}
           <ResizablePanel defaultSize={60} minSize={15} className="min-h-0">
-            <div className="h-full flex flex-col overflow-hidden">
+            <div className="h-full flex flex-col overflow-hidden min-w-0">
               {/* Error */}
               {error && (
                 <div className="m-3 p-3 rounded-lg border border-destructive/50 bg-destructive/5 flex items-start gap-3 shrink-0">
@@ -675,11 +672,11 @@ export function Explorer() {
                   </div>
 
                   {/* Table */}
-                  <div className="flex-1 overflow-auto min-h-0">
-                    <table className="w-full text-sm">
+                  <div className="flex-1 overflow-auto min-h-0 min-w-0">
+                    <table className="w-max min-w-full text-sm">
                       <thead className="bg-background sticky top-0 z-10">
                         <tr>
-                          <th className="px-3 py-2 text-left font-medium whitespace-nowrap border-b bg-background text-muted-foreground text-xs w-10">#</th>
+                          <th className="px-3 py-2 text-left font-medium whitespace-nowrap border-b bg-background text-muted-foreground text-xs w-10 sticky left-0 z-20">#</th>
                           {table.getHeaderGroups().map(headerGroup => (
                             headerGroup.headers.map(header => (
                               <th
@@ -698,7 +695,7 @@ export function Explorer() {
                             key={row.id}
                             className={`hover:bg-primary/5 transition-colors ${i % 2 === 1 ? 'bg-muted/20' : ''}`}
                           >
-                            <td className="px-3 py-1.5 whitespace-nowrap border-b border-border/30 text-muted-foreground/50 tabular-nums">
+                            <td className={`px-3 py-1.5 whitespace-nowrap border-b border-border/30 text-muted-foreground/50 tabular-nums sticky left-0 z-10 ${i % 2 === 1 ? 'bg-muted' : 'bg-background'}`}>
                               {currentPage * pageSize + i + 1}
                             </td>
                             {row.getVisibleCells().map(cell => (
@@ -729,41 +726,64 @@ export function Explorer() {
                         value={String(pageSize)}
                         onValueChange={(value) => setPageSize(Number(value))}
                       >
-                        <SelectTrigger className="h-7 w-[60px] text-xs">
+                        <SelectTrigger className="h-7 w-[70px] text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="25">25</SelectItem>
                           <SelectItem value="50">50</SelectItem>
                           <SelectItem value="100">100</SelectItem>
+                          <SelectItem value="250">250</SelectItem>
+                          <SelectItem value="500">500</SelectItem>
+                          <SelectItem value="1000">1000</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Showing {Math.min(currentPage * pageSize + 1, totalRows)}-{Math.min((currentPage + 1) * pageSize, totalRows)} of {totalRows.toLocaleString()}
+                    </span>
+
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <ChevronsLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-xs text-muted-foreground tabular-nums px-1.5">
                         {currentPage + 1} / {pageCount || 1}
                       </span>
-                      <div className="flex items-center gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => table.previousPage()}
-                          disabled={!table.getCanPreviousPage()}
-                        >
-                          <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => table.nextPage()}
-                          disabled={!table.getCanNextPage()}
-                        >
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <ChevronsRight className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </>

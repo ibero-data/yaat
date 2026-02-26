@@ -13,15 +13,13 @@ import {
   Shield,
   BarChart3,
   Activity,
-  ArrowLeft,
-  Check,
   Eye,
   EyeOff,
 } from 'lucide-react'
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
-type Mode = 'login' | 'forgot' | 'forgot-success' | 'onboarding'
+type Mode = 'login' | 'onboarding'
 
 export function Login() {
   const [mode, setMode] = useState<Mode>('login')
@@ -52,37 +50,6 @@ export function Login() {
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (!email || !emailRegex.test(email)) {
-      setError('Please enter a valid email address')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to send reset email')
-      }
-
-      setMode('forgot-success')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to request password reset')
     } finally {
       setLoading(false)
     }
@@ -129,17 +96,6 @@ export function Login() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const switchToForgot = () => {
-    setError('')
-    setPassword('')
-    setMode('forgot')
-  }
-
-  const switchToLogin = () => {
-    setError('')
-    setMode('login')
   }
 
   return (
@@ -198,18 +154,9 @@ export function Login() {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="text-sm text-foreground">
-                        Password
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={switchToForgot}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
+                    <Label htmlFor="password" className="text-sm text-foreground">
+                      Password
+                    </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -238,84 +185,6 @@ export function Login() {
                   </Button>
                 </form>
               </>
-            )}
-
-            {mode === 'forgot' && (
-              <>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Forgot password
-                  </h2>
-                  <p className="text-muted-foreground mt-1">
-                    Enter your email and we'll send you a reset link
-                  </p>
-                </div>
-
-                <form onSubmit={handleForgotPassword} className="space-y-5">
-                  {error && (
-                    <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email" className="text-sm text-foreground">
-                      Email address
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="admin@example.com"
-                        required
-                        autoFocus
-                        autoComplete="email"
-                        className="pl-10 h-11"
-                      />
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full h-11" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Send reset link
-                  </Button>
-
-                  <button
-                    type="button"
-                    onClick={switchToLogin}
-                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1"
-                  >
-                    <ArrowLeft className="h-3 w-3" />
-                    Back to login
-                  </button>
-                </form>
-              </>
-            )}
-
-            {mode === 'forgot-success' && (
-              <div className="text-center">
-                <div className="flex justify-center mb-6">
-                  <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Check className="h-8 w-8 text-green-500" />
-                  </div>
-                </div>
-
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">
-                  Check your email
-                </h2>
-                <p className="text-muted-foreground mb-6">
-                  If an account with that email exists, we've sent a password reset link. The link expires in 30 minutes.
-                </p>
-
-                <Button onClick={switchToLogin} variant="outline" className="w-full h-11">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to login
-                </Button>
-              </div>
             )}
 
             {mode === 'onboarding' && (
@@ -477,7 +346,7 @@ export function Login() {
               </div>
               <div className="p-4 rounded-xl bg-secondary/50">
                 <Zap className="h-5 w-5 text-primary mb-2" />
-                <h3 className="text-sm font-semibold text-foreground">weight</h3>
+                <h3 className="text-sm font-semibold text-foreground">Lightweight</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Single binary deploy</p>
               </div>
             </div>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
-import { LicenseProvider } from './hooks/useLicense'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
+import { fetchAPI } from './lib/api'
+import { queryClient } from './lib/query-client'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import { DomainProvider } from './contexts/DomainContext'
 import { ThemeProvider, useTheme } from './components/theme/theme-provider'
-import { Dashboard } from './components/Dashboard'
+import { useRealtime } from './hooks/useRealtime'
+import { Dashboard } from './components/dashboard/Dashboard'
 import { LicenseSettings } from './components/LicenseSettings'
 import {
   DomainsSettings,
@@ -215,8 +218,7 @@ function AppSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(location.pathname.startsWith('/settings'))
 
   useEffect(() => {
-    fetch('/api/version')
-      .then(res => res.json())
+    fetchAPI<{ version: string }>('/api/version')
       .then(data => setVersion(data.version))
       .catch(() => setVersion('dev'))
   }, [])
@@ -364,6 +366,8 @@ function AppSidebar() {
 }
 
 function AppLayout() {
+  useRealtime()
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -373,7 +377,7 @@ function AppLayout() {
           <span className="font-semibold">YAAT</span>
         </header>
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="max-w-[1800px] mx-auto w-full h-full">
+          <div className="max-w-[1800px] mx-auto w-full h-full overflow-hidden">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/bots" element={<BotAnalysis />} />
@@ -406,26 +410,25 @@ function AppLayout() {
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="yaat-ui-theme">
-      <BrowserRouter>
-        <AuthProvider>
-          <LicenseProvider>
-            <DomainProvider>
-              <Routes>
-                <Route path="/login" element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } />
-                <Route path="/*" element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                } />
-              </Routes>
-            </DomainProvider>
-          </LicenseProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } />
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+        <Toaster richColors position="bottom-right" />
+      </QueryClientProvider>
     </ThemeProvider>
   )
 }

@@ -156,8 +156,11 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	// Start server
 	server := &http.Server{
-		Addr:    cfg.ListenAddr,
-		Handler: router,
+		Addr:         cfg.ListenAddr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Graceful shutdown
