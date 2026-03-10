@@ -1,4 +1,4 @@
-module github.com/yaat/yaat-
+module github.com/caioricciuti/etiquetta
 
 go 1.24.0
 

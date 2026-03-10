@@ -14,22 +14,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yaat/yaat-/internal/api"
-	"github.com/yaat/yaat-/internal/bot"
-	"github.com/yaat/yaat-/internal/config"
-	"github.com/yaat/yaat-/internal/database"
-	"github.com/yaat/yaat-/internal/enrichment"
-	"github.com/yaat/yaat-/internal/licensing"
-	"github.com/yaat/yaat-/internal/settings"
-	"github.com/yaat/yaat-/ui"
+	"github.com/caioricciuti/etiquetta/internal/api"
+	"github.com/caioricciuti/etiquetta/internal/bot"
+	"github.com/caioricciuti/etiquetta/internal/config"
+	"github.com/caioricciuti/etiquetta/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/enrichment"
+	"github.com/caioricciuti/etiquetta/internal/licensing"
+	"github.com/caioricciuti/etiquetta/internal/settings"
+	"github.com/caioricciuti/etiquetta/ui"
 )
 
 var detach bool
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the YAAT  server",
-	Long:  `Starts the YAAT  analytics server and begins accepting tracking data.`,
+	Short: "Start the Etiquetta server",
+	Long:  `Starts the Etiquetta analytics server and begins accepting tracking data.`,
 	Run:   runServe,
 }
 
@@ -54,7 +54,7 @@ func runServe(cmd *cobra.Command, args []string) {
 		child := exec.Command(execPath, cmdArgs...)
 
 		// Redirect output to log file
-		logPath := filepath.Join(dataDir, "yaat.log")
+		logPath := filepath.Join(dataDir, "etiquetta.log")
 		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			log.Fatalf("Failed to open log file: %v", err)
@@ -68,12 +68,12 @@ func runServe(cmd *cobra.Command, args []string) {
 		}
 
 		// Write PID file
-		pidPath := filepath.Join(dataDir, "yaat.pid")
+		pidPath := filepath.Join(dataDir, "etiquetta.pid")
 		if err := os.WriteFile(pidPath, []byte(fmt.Sprintf("%d", child.Process.Pid)), 0644); err != nil {
 			log.Printf("Warning: Failed to write PID file: %v", err)
 		}
 
-		fmt.Printf("YAAT started in background (PID: %d)\n", child.Process.Pid)
+		fmt.Printf("Etiquetta started in background (PID: %d)\n", child.Process.Pid)
 		fmt.Printf("Log file: %s\n", logPath)
 		fmt.Printf("PID file: %s\n", pidPath)
 		return
@@ -85,7 +85,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 
 	// Initialize database
-	db, err := database.New(dataDir + "/yaat.db")
+	db, err := database.New(dataDir + "/etiquetta.db")
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -173,7 +173,7 @@ func runServe(cmd *cobra.Command, args []string) {
 		server.Close()
 	}()
 
-	log.Printf("YAAT  %s starting on %s", Version, cfg.ListenAddr)
+	log.Printf("Etiquetta %s starting on %s", Version, cfg.ListenAddr)
 	log.Printf("Data directory: %s", cfg.DataDir)
 	log.Printf("License: %s", licenseManager.GetTier())
 

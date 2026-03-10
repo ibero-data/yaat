@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yaat/yaat-/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/auth"
 )
 
 // CheckSetup returns whether initial setup is complete

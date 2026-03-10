@@ -1,19 +1,17 @@
 <p align="center">
-  <img src="ui/public/logo.png" alt="YAAT" width="120" height="120">
+  <img src="ui/public/logo-complete.png" alt="Etiquetta" width="120" >
 </p>
-
-<h1 align="center">YAAT</h1>
 
 <p align="center">
   <strong>Self-hosted web analytics. Privacy-focused. Single binary.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ibero-data/yaat/actions/workflows/ci.yml">
-    <img src="https://github.com/ibero-data/yaat/actions/workflows/ci.yml/badge.svg" alt="CI">
+  <a href="https://github.com/caioricciuti/etiquetta/actions/workflows/ci.yml">
+    <img src="https://github.com/caioricciuti/etiquetta/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
-  <a href="https://github.com/ibero-data/yaat/releases/latest">
-    <img src="https://img.shields.io/github/v/release/ibero-data/yaat" alt="Release">
+  <a href="https://github.com/caioricciuti/etiquetta/releases/latest">
+    <img src="https://img.shields.io/github/v/release/caioricciuti/etiquetta" alt="Release">
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
@@ -25,13 +23,13 @@
 ## Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ibero-data/yaat/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/caioricciuti/etiquetta/main/install.sh | bash
 ```
 
 Or with systemd service (Linux):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ibero-data/yaat/main/install.sh | bash -s -- --with-systemd
+curl -sSL https://raw.githubusercontent.com/caioricciuti/etiquetta/main/install.sh | bash -s -- --with-systemd
 ```
 
 ## Features
@@ -52,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/ibero-data/yaat/main/install.sh | ba
 ```bash
 # Download the binary (or use the install script above)
 # Then run:
-./yaat serve
+./etiquetta serve
 
 # Open http://localhost:3456
 # Complete the setup wizard to create your admin account
@@ -64,28 +62,28 @@ curl -sSL https://raw.githubusercontent.com/ibero-data/yaat/main/install.sh | ba
 
 ```bash
 # Stop and disable the service
-sudo systemctl stop yaat
-sudo systemctl disable yaat
+sudo systemctl stop etiquetta
+sudo systemctl disable etiquetta
 
 # Remove service file
-sudo rm /etc/systemd/system/yaat.service
+sudo rm /etc/systemd/system/etiquetta.service
 sudo systemctl daemon-reload
 
 # Remove binary
-sudo rm /usr/local/bin/yaat
+sudo rm /usr/local/bin/etiquetta
 
 # Remove data (WARNING: deletes all analytics data!)
-sudo rm -rf /var/lib/yaat
+sudo rm -rf /var/lib/etiquetta
 
-# Remove yaat user (optional)
-sudo userdel yaat
+# Remove etiquetta user (optional)
+sudo userdel etiquetta
 ```
 
 ### Manual install removal
 
 ```bash
 # Just remove the binary and data
-rm ./bin/yaat
+rm ./bin/etiquetta
 rm -rf ./data
 ```
 
@@ -94,10 +92,10 @@ rm -rf ./data
 Requires Go 1.22+ and Bun.
 
 ```bash
-git clone https://github.com/ibero-data/yaat.git
-cd yaat
+git clone https://github.com/caioricciuti/etiquetta.git
+cd etiquetta
 make all
-./bin/yaat serve
+./bin/etiquetta serve
 ```
 
 ## Nginx Setup (Reverse Proxy)
@@ -105,10 +103,10 @@ make all
 Copy the example config:
 
 ```bash
-sudo cp nginx.conf.example /etc/nginx/sites-available/yaat
-sudo ln -s /etc/nginx/sites-available/yaat /etc/nginx/sites-enabled/
+sudo cp nginx.conf.example /etc/nginx/sites-available/etiquetta
+sudo ln -s /etc/nginx/sites-available/etiquetta /etc/nginx/sites-enabled/
 # Edit the file and replace 'your-domain.com' with your domain
-sudo nano /etc/nginx/sites-available/yaat
+sudo nano /etc/nginx/sites-available/etiquetta
 sudo nginx -t && sudo systemctl reload nginx
 
 # Add HTTPS with Let's Encrypt
@@ -119,18 +117,18 @@ sudo certbot --nginx -d your-domain.com
 
 Environment variables (or `.env` file):
 
-| Variable              | Default  | Description                                                     |
-| --------------------- | -------- | --------------------------------------------------------------- |
-| `YAAT_PORT`           | `3456`   | HTTP server port                                                |
-| `YAAT_DATA_DIR`       | `./data` | Database storage directory                                      |
-| `YAAT_JWT_SECRET`     | (random) | JWT signing secret (auto-generated if not set)                  |
-| `YAAT_SECURE_COOKIES` | `false`  | Set to `true` only if running HTTPS directly (not behind proxy) |
+| Variable                  | Default  | Description                                                     |
+| ------------------------- | -------- | --------------------------------------------------------------- |
+| `ETIQUETTA_PORT`          | `3456`   | HTTP server port                                                |
+| `ETIQUETTA_DATA_DIR`      | `./data` | Database storage directory                                      |
+| `ETIQUETTA_JWT_SECRET`    | (random) | JWT signing secret (auto-generated if not set)                  |
+| `ETIQUETTA_SECURE_COOKIES`| `false`  | Set to `true` only if running HTTPS directly (not behind proxy) |
 
 ## Tracking Setup
 
 ### 1. Add Your Domain
 
-1. Log in to YAAT
+1. Log in to Etiquetta
 2. Go to **Settings > Domains**
 3. Click **Add Domain** and enter your site name and domain
 
@@ -139,7 +137,7 @@ Environment variables (or `.env` file):
 Add this snippet to your website's `<head>`:
 
 ```html
-<script defer src="https://your-yaat-instance.com/s.js"></script>
+<script defer src="https://your-etiquetta-instance.com/s.js"></script>
 ```
 
 The tracker automatically collects:
@@ -176,7 +174,7 @@ The tracker automatically collects:
 | Priority Support   |     -     |      -       |       ✓       |
 | **Price**          | **Free**  | **€99/year** | **€299/year** |
 
-[Get a License](https://ibero.dev/yaat)
+[Get a License](https://etiquetta.com/pricing)
 
 ## API Reference
 
@@ -244,8 +242,8 @@ make clean
 ## Architecture
 
 ```
-yaat/
-├── cmd/yaat/         # CLI entry point
+etiquetta/
+├── cmd/etiquetta/    # CLI entry point
 ├── internal/
 │   ├── api/          # HTTP handlers and router
 │   ├── auth/         # JWT authentication
@@ -271,14 +269,14 @@ yaat/
 
 ## License
 
-YAAT is licensed under the [GNU General Public License v3.0](LICENSE).
+Etiquetta is licensed under the [GNU General Public License v3.0](LICENSE).
 
 You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license. If you distribute modified versions, you must also make the source code available under the same license.
 
 ## Support
 
-- Issues: [github.com/ibero-data/yaat/issues](https://github.com/ibero-data/yaat/issues)
-- Website: [ibero.dev/yaat](https://yaat.io)
+- Issues: [github.com/caioricciuti/etiquetta/issues](https://github.com/caioricciuti/etiquetta/issues)
+- Website: [etiquetta.com](https://etiquetta.com)
 
 ---
 

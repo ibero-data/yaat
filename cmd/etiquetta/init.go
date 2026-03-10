@@ -14,15 +14,15 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/yaat/yaat-/internal/auth"
-	"github.com/yaat/yaat-/internal/database"
-	"github.com/yaat/yaat-/internal/settings"
+	"github.com/caioricciuti/etiquetta/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/settings"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize YAAT  with an interactive setup wizard",
-	Long: `Runs an interactive setup wizard to configure YAAT .
+	Short: "Initialize Etiquetta with an interactive setup wizard",
+	Long: `Runs an interactive setup wizard to configure Etiquetta.
 
 This will:
   1. Create the data directory
@@ -37,7 +37,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("===========================================")
-	fmt.Println("  YAAT  Setup Wizard")
+	fmt.Println("  Etiquetta Setup Wizard")
 	fmt.Println("===========================================")
 	fmt.Println()
 
@@ -50,7 +50,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	}
 
 	// Check if database already exists
-	dbPath := dataDir + "/yaat.db"
+	dbPath := dataDir + "/etiquetta.db"
 	dbExists := false
 	if _, err := os.Stat(dbPath); err == nil {
 		dbExists = true
@@ -95,7 +95,7 @@ func runInit(cmd *cobra.Command, args []string) {
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
 		if response != "y" && response != "yes" {
-			fmt.Println("\nSetup complete! Run 'yaat serve' to start the server.")
+			fmt.Println("\nSetup complete! Run 'etiquetta serve' to start the server.")
 			return
 		}
 	}
@@ -187,7 +187,7 @@ func runInit(cmd *cobra.Command, args []string) {
 			settingsSvc.Set("maxmind_account_id", accountID)
 			settingsSvc.Set("maxmind_license_key", licenseKey)
 			fmt.Println("MaxMind credentials saved.")
-			fmt.Println("Run 'yaat geoip download' to download the GeoIP database.")
+			fmt.Println("Run 'etiquetta geoip download' to download the GeoIP database.")
 		}
 	}
 
@@ -250,7 +250,7 @@ func runInit(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Println("Next steps:")
-	fmt.Println("  1. Run 'yaat serve' to start the server")
+	fmt.Println("  1. Run 'etiquetta serve' to start the server")
 	fmt.Printf("  2. Open http://localhost%s in your browser\n", listenAddr)
 	fmt.Println("  3. Log in with your admin credentials")
 	fmt.Println()

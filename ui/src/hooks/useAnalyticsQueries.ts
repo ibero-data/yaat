@@ -130,24 +130,24 @@ export function useBrowsers() {
   })
 }
 
-export function useVitals() {
+export function useVitals(featureEnabled = true) {
   const { qs, enabled } = useAnalyticsParams()
   return useQuery({
     queryKey: ['stats', 'vitals', qs],
     queryFn: () => fetchAPI<WebVitals>(`/api/stats/vitals?${qs}`),
-    enabled,
+    enabled: enabled && featureEnabled,
     retry: false,
     meta: { silent: true },
     placeholderData: keepPreviousData,
   })
 }
 
-export function useErrors() {
+export function useErrors(featureEnabled = true) {
   const { qs, enabled } = useAnalyticsParams()
   return useQuery({
     queryKey: ['stats', 'errors', qs],
     queryFn: () => fetchAPI<ErrorSummary[]>(`/api/stats/errors?${qs}`),
-    enabled,
+    enabled: enabled && featureEnabled,
     retry: false,
     meta: { silent: true },
     placeholderData: keepPreviousData,

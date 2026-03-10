@@ -1,15 +1,15 @@
 /**
- * YAAT  Analytics Tracker
+ * Etiquetta Analytics Tracker
  * Privacy-first, cookie-free analytics.
  */
 (function() {
   "use strict";
 
-  if (window.__YAAT_LOADED__) return;
-  window.__YAAT_LOADED__ = true;
+  if (window.__ETIQUETTA_LOADED__) return;
+  window.__ETIQUETTA_LOADED__ = true;
 
   // Configuration
-  const CONFIG = window.__YAAT_CONFIG__ || {};
+  const CONFIG = window.__ETIQUETTA_CONFIG__ || {};
 
   function getScript() {
     const scripts = document.querySelectorAll('script[src*="s.js"]');
@@ -96,7 +96,7 @@
   }
 
   function log(...args) {
-    if (DEBUG) console.log("[YAAT]", ...args);
+    if (DEBUG) console.log("[Etiquetta]", ...args);
   }
 
   function uuid() {
@@ -499,7 +499,7 @@
   }
 
   // Public API
-  window.yaat = {
+  window.etiquetta = {
     track: track,
     pageview: trackPageview,
     flush: flush,
@@ -507,8 +507,8 @@
   };
 
   // Init
-  function init() {
-    log("YAAT v2.0 initializing");
+  function startTracking() {
+    log("Etiquetta v2.0 initializing");
     setupBehavior();
     setupSPA();
     setupScroll();
@@ -525,8 +525,52 @@
 
     window.addEventListener("beforeunload", flush);
     window.addEventListener("pagehide", flush);
-    log("YAAT initialized");
+    log("Etiquetta initialized");
+  }
+
+  function init() {
+    var consent = window.__ETIQUETTA_CONSENT__;
+
+    // If consent system is loaded and analytics is explicitly denied, wait
+    if (consent && consent.analytics === false) {
+      log("Analytics consent not granted, waiting...");
+      window.addEventListener("etiquetta:consent", function handler(e) {
+        var c = window.__ETIQUETTA_CONSENT__;
+        if (c && c.analytics !== false) {
+          window.removeEventListener("etiquetta:consent", handler);
+          startTracking();
+        }
+      });
+      return;
+    }
+
+    // Either consent granted or no consent system loaded (backwards compatible)
+    startTracking();
   }
 
   init();
+
+  // Auto-load consent banner and tag manager
+  // Only tracker script tag is required; consent (c.js) and tag manager (tm/{siteId}.js)
+  // are injected automatically. Both scripts handle 404s gracefully (no config = silent exit).
+  if (SITE_ID) {
+    function loadTagManager() {
+      var tms = document.createElement('script');
+      tms.src = BASE_URL + '/tm/' + SITE_ID + '.js';
+      tms.async = true;
+      document.head.appendChild(tms);
+    }
+
+    if (!window.__ETIQUETTA_CONSENT_LOADED__) {
+      var cs = document.createElement('script');
+      cs.src = BASE_URL + '/c.js';
+      cs.setAttribute('data-site', SITE_ID);
+      cs.async = true;
+      cs.onload = loadTagManager;
+      cs.onerror = loadTagManager; // Load TM even if consent fails (404 = not configured)
+      document.head.appendChild(cs);
+    } else {
+      loadTagManager();
+    }
+  }
 })();

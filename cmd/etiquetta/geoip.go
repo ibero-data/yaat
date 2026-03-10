@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/yaat/yaat-/internal/database"
-	"github.com/yaat/yaat-/internal/geoip"
-	"github.com/yaat/yaat-/internal/settings"
+	"github.com/caioricciuti/etiquetta/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/geoip"
+	"github.com/caioricciuti/etiquetta/internal/settings"
 )
 
 var geoipCmd = &cobra.Command{
@@ -28,9 +28,9 @@ Requires MaxMind account credentials to be configured.
 You can get free credentials at: https://www.maxmind.com/en/geolite2/signup
 
 Configure credentials via:
-  - 'yaat init' command
+  - 'etiquetta init' command
   - Settings page in the web UI
-  - 'yaat geoip configure' command`,
+  - 'etiquetta geoip configure' command`,
 	Run: runGeoIPDownload,
 }
 
@@ -61,7 +61,7 @@ func runGeoIPDownload(cmd *cobra.Command, args []string) {
 	licenseKey, _ := settingsSvc.Get("maxmind_license_key")
 
 	if accountID == "" || licenseKey == "" {
-		log.Fatal("MaxMind credentials not configured. Run 'yaat geoip configure' first.")
+		log.Fatal("MaxMind credentials not configured. Run 'etiquetta geoip configure' first.")
 	}
 
 	geoipPath := settingsSvc.GetWithDefault("geoip_path", dataDir+"/GeoLite2-City.mmdb")
@@ -139,11 +139,11 @@ func runGeoIPConfigure(cmd *cobra.Command, args []string) {
 	settingsSvc.Set("maxmind_license_key", licenseKey)
 
 	fmt.Println("\nCredentials saved successfully!")
-	fmt.Println("Run 'yaat geoip download' to download the database.")
+	fmt.Println("Run 'etiquetta geoip download' to download the database.")
 }
 
 func initSettingsService() (*database.DB, *settings.Service) {
-	db, err := database.New(dataDir + "/yaat.db")
+	db, err := database.New(dataDir + "/etiquetta.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

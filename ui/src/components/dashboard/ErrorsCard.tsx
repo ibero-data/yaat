@@ -2,9 +2,11 @@ import { AlertTriangle } from 'lucide-react'
 import { useErrors } from '../../hooks/useAnalyticsQueries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { FeatureGate, FeatureBadge } from '../FeatureGate'
+import { useLicense } from '../../hooks/useLicenseQuery'
 
 export function ErrorsCard() {
-  const { data } = useErrors()
+  const { hasFeature } = useLicense()
+  const { data } = useErrors(hasFeature('error_tracking'))
   const errors = data ?? []
 
   return (

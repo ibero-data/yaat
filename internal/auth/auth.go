@@ -86,7 +86,7 @@ func (a *Auth) GenerateToken(user *User) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(a.tokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "yaat-",
+			Issuer:    "etiquetta",
 		},
 	}
 
@@ -121,7 +121,7 @@ func (a *Auth) ValidateToken(tokenString string) (*Claims, error) {
 // SetAuthCookie sets the authentication cookie
 func (a *Auth) SetAuthCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "yaat_session",
+		Name:     "etiquetta_session",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
@@ -134,7 +134,7 @@ func (a *Auth) SetAuthCookie(w http.ResponseWriter, token string) {
 // ClearAuthCookie clears the authentication cookie
 func (a *Auth) ClearAuthCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "yaat_session",
+		Name:     "etiquetta_session",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
@@ -147,7 +147,7 @@ func (a *Auth) ClearAuthCookie(w http.ResponseWriter) {
 // GetTokenFromRequest extracts the JWT token from the request
 func GetTokenFromRequest(r *http.Request) string {
 	// First try cookie
-	cookie, err := r.Cookie("yaat_session")
+	cookie, err := r.Cookie("etiquetta_session")
 	if err == nil && cookie.Value != "" {
 		return cookie.Value
 	}

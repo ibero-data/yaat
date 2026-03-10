@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yaat/yaat-/internal/auth"
-	"github.com/yaat/yaat-/internal/bot"
-	"github.com/yaat/yaat-/internal/config"
-	"github.com/yaat/yaat-/internal/database"
-	"github.com/yaat/yaat-/internal/enrichment"
-	"github.com/yaat/yaat-/internal/identification"
-	"github.com/yaat/yaat-/internal/licensing"
+	"github.com/caioricciuti/etiquetta/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/bot"
+	"github.com/caioricciuti/etiquetta/internal/config"
+	"github.com/caioricciuti/etiquetta/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/enrichment"
+	"github.com/caioricciuti/etiquetta/internal/identification"
+	"github.com/caioricciuti/etiquetta/internal/licensing"
 )
 
 // Version is set from main.go at startup
@@ -60,7 +60,7 @@ func (h *Handlers) ServeTrackerScript(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Inject configuration (no DNT - we're GDPR compliant by design with no cookies/PII)
-	config := fmt.Sprintf(`window.__YAAT_CONFIG__={endpoint:"%s",trackPerformance:%t,trackErrors:%t};`,
+	config := fmt.Sprintf(`window.__ETIQUETTA_CONFIG__={endpoint:"%s",trackPerformance:%t,trackErrors:%t};`,
 		"/i",
 		h.cfg.TrackPerformance && h.licenseManager.HasFeature(licensing.FeaturePerformance),
 		h.cfg.TrackErrors && h.licenseManager.HasFeature(licensing.FeatureErrorTracking),
@@ -493,7 +493,7 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 
 // Database access for DuckDB WASM
 func (h *Handlers) ServeDatabase(w http.ResponseWriter, r *http.Request) {
-	dbPath := h.cfg.DataDir + "/yaat.db"
+	dbPath := h.cfg.DataDir + "/etiquetta.db"
 
 	// Check if client wants partial content (Range request)
 	rangeHeader := r.Header.Get("Range")
@@ -509,7 +509,7 @@ func (h *Handlers) ServeDatabase(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetDatabaseInfo(w http.ResponseWriter, r *http.Request) {
-	dbPath := h.cfg.DataDir + "/yaat.db"
+	dbPath := h.cfg.DataDir + "/etiquetta.db"
 	info, err := os.Stat(dbPath)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "Database not found")

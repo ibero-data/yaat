@@ -13,7 +13,7 @@ export const useDomainStore = create<DomainStore>()(
       setSelectedDomainId: (id) => set({ selectedDomainId: id }),
     }),
     {
-      name: 'yaat_selected_domain',
+      name: 'etiquetta_selected_domain',
     },
   ),
 )

@@ -3,9 +3,11 @@ import { useVitals } from '../../hooks/useAnalyticsQueries'
 import { formatDuration } from '../../lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { FeatureGate, FeatureBadge } from '../FeatureGate'
+import { useLicense } from '../../hooks/useLicenseQuery'
 
 export function WebVitalsCard() {
-  const { data } = useVitals()
+  const { hasFeature } = useLicense()
+  const { data } = useVitals(hasFeature('performance'))
 
   return (
     <Card>

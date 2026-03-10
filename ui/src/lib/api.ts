@@ -14,5 +14,7 @@ export async function fetchAPI<T>(url: string, init?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
     throw new ApiError(res.status, body.error || `HTTP ${res.status}`)
   }
+  // 204 No Content — nothing to parse
+  if (res.status === 204) return undefined as T
   return res.json()
 }

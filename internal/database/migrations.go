@@ -321,6 +321,121 @@ func (db *DB) Migrate() error {
 					ON visitor_sessions(domain, start_time);
 			`,
 		},
+		{
+			version: 13,
+			sql: `
+				-- Consent tables
+				CREATE TABLE IF NOT EXISTS consent_configs (
+					id TEXT PRIMARY KEY,
+					domain_id TEXT NOT NULL,
+					version INTEGER NOT NULL DEFAULT 1,
+					is_active INTEGER NOT NULL DEFAULT 1,
+					categories TEXT NOT NULL DEFAULT '[]',
+					appearance TEXT NOT NULL DEFAULT '{}',
+					translations TEXT NOT NULL DEFAULT '{}',
+					cookie_name TEXT NOT NULL DEFAULT 'etiquetta_consent',
+					cookie_expiry_days INTEGER NOT NULL DEFAULT 365,
+					auto_language INTEGER NOT NULL DEFAULT 1,
+					geo_targeting TEXT NOT NULL DEFAULT '[]',
+					created_at INTEGER NOT NULL,
+					updated_at INTEGER NOT NULL,
+					FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+				);
+				CREATE INDEX idx_consent_configs_domain ON consent_configs(domain_id);
+				CREATE UNIQUE INDEX idx_consent_configs_version ON consent_configs(domain_id, version);
+
+				CREATE TABLE IF NOT EXISTS consent_records (
+					id TEXT PRIMARY KEY,
+					domain_id TEXT NOT NULL,
+					visitor_hash TEXT NOT NULL,
+					ip_hash TEXT,
+					categories TEXT NOT NULL DEFAULT '{}',
+					config_version INTEGER NOT NULL,
+					action TEXT NOT NULL,
+					user_agent TEXT,
+					geo_country TEXT,
+					timestamp INTEGER NOT NULL,
+					FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+				);
+				CREATE INDEX idx_consent_records_domain_ts ON consent_records(domain_id, timestamp);
+				CREATE INDEX idx_consent_records_visitor ON consent_records(visitor_hash);
+
+				-- Tag Manager tables
+				CREATE TABLE IF NOT EXISTS tm_containers (
+					id TEXT PRIMARY KEY,
+					domain_id TEXT NOT NULL,
+					name TEXT NOT NULL,
+					published_version INTEGER DEFAULT 0,
+					draft_version INTEGER DEFAULT 1,
+					published_at INTEGER,
+					published_by TEXT,
+					created_at INTEGER NOT NULL,
+					updated_at INTEGER NOT NULL,
+					FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+					UNIQUE(domain_id)
+				);
+
+				CREATE TABLE IF NOT EXISTS tm_tags (
+					id TEXT PRIMARY KEY,
+					container_id TEXT NOT NULL,
+					name TEXT NOT NULL,
+					tag_type TEXT NOT NULL,
+					config TEXT NOT NULL DEFAULT '{}',
+					consent_category TEXT NOT NULL DEFAULT 'marketing',
+					priority INTEGER DEFAULT 0,
+					is_enabled INTEGER DEFAULT 1,
+					version INTEGER DEFAULT 1,
+					created_at INTEGER NOT NULL,
+					updated_at INTEGER NOT NULL,
+					FOREIGN KEY (container_id) REFERENCES tm_containers(id) ON DELETE CASCADE
+				);
+				CREATE INDEX idx_tm_tags_container ON tm_tags(container_id);
+
+				CREATE TABLE IF NOT EXISTS tm_triggers (
+					id TEXT PRIMARY KEY,
+					container_id TEXT NOT NULL,
+					name TEXT NOT NULL,
+					trigger_type TEXT NOT NULL,
+					config TEXT NOT NULL DEFAULT '{}',
+					created_at INTEGER NOT NULL,
+					updated_at INTEGER NOT NULL,
+					FOREIGN KEY (container_id) REFERENCES tm_containers(id) ON DELETE CASCADE
+				);
+				CREATE INDEX idx_tm_triggers_container ON tm_triggers(container_id);
+
+				CREATE TABLE IF NOT EXISTS tm_tag_triggers (
+					tag_id TEXT NOT NULL,
+					trigger_id TEXT NOT NULL,
+					is_exception INTEGER DEFAULT 0,
+					PRIMARY KEY (tag_id, trigger_id),
+					FOREIGN KEY (tag_id) REFERENCES tm_tags(id) ON DELETE CASCADE,
+					FOREIGN KEY (trigger_id) REFERENCES tm_triggers(id) ON DELETE CASCADE
+				);
+
+				CREATE TABLE IF NOT EXISTS tm_variables (
+					id TEXT PRIMARY KEY,
+					container_id TEXT NOT NULL,
+					name TEXT NOT NULL,
+					variable_type TEXT NOT NULL,
+					config TEXT NOT NULL DEFAULT '{}',
+					created_at INTEGER NOT NULL,
+					updated_at INTEGER NOT NULL,
+					FOREIGN KEY (container_id) REFERENCES tm_containers(id) ON DELETE CASCADE
+				);
+				CREATE INDEX idx_tm_variables_container ON tm_variables(container_id);
+
+				CREATE TABLE IF NOT EXISTS tm_snapshots (
+					id TEXT PRIMARY KEY,
+					container_id TEXT NOT NULL,
+					version INTEGER NOT NULL,
+					snapshot TEXT NOT NULL,
+					published_by TEXT,
+					published_at INTEGER NOT NULL,
+					FOREIGN KEY (container_id) REFERENCES tm_containers(id) ON DELETE CASCADE,
+					UNIQUE(container_id, version)
+				);
+			`,
+		},
 	}
 
 	for _, m := range migrations {

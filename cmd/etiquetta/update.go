@@ -15,8 +15,8 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update YAAT to the latest version",
-	Long:  `Downloads and installs the latest version of YAAT from GitHub releases.`,
+	Short: "Update Etiquetta to the latest version",
+	Long:  `Downloads and installs the latest version of Etiquetta from GitHub releases.`,
 	Run:   runUpdate,
 }
 
@@ -32,7 +32,7 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	fmt.Println("Checking for updates...")
 
 	// Get latest release info
-	resp, err := http.Get("https://api.github.com/repos/ibero-data/yaat/releases/latest")
+	resp, err := http.Get("https://api.github.com/repos/caioricciuti/etiquetta/releases/latest")
 	if err != nil {
 		fmt.Printf("Failed to check for updates: %v\n", err)
 		os.Exit(1)
@@ -62,7 +62,7 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	// Determine binary name for this platform
-	binaryName := fmt.Sprintf("yaat-%s-%s", runtime.GOOS, runtime.GOARCH)
+	binaryName := fmt.Sprintf("etiquetta-%s-%s", runtime.GOOS, runtime.GOARCH)
 
 	// Find download URL
 	var downloadURL string
@@ -101,7 +101,7 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	}
 
 	// Create temp file
-	tmpFile, err := os.CreateTemp("", "yaat-update-*")
+	tmpFile, err := os.CreateTemp("", "etiquetta-update-*")
 	if err != nil {
 		fmt.Printf("Failed to create temp file: %v\n", err)
 		os.Exit(1)
@@ -156,25 +156,25 @@ func runUpdate(cmd *cobra.Command, args []string) {
 	fmt.Printf("Successfully updated to %s\n", release.TagName)
 
 	// Try to restart the service automatically
-	fmt.Println("Restarting YAAT...")
+	fmt.Println("Restarting Etiquetta...")
 
 	// Check if systemctl is available (Linux with systemd)
 	if _, err := exec.LookPath("systemctl"); err == nil {
 		// Try systemd restart (may need sudo)
-		cmd := exec.Command("systemctl", "restart", "yaat")
+		cmd := exec.Command("systemctl", "restart", "etiquetta")
 		if err := cmd.Run(); err != nil {
 			// Try with sudo
-			cmd = exec.Command("sudo", "systemctl", "restart", "yaat")
+			cmd = exec.Command("sudo", "systemctl", "restart", "etiquetta")
 			if err := cmd.Run(); err != nil {
 				fmt.Println("Could not restart automatically.")
-				fmt.Println("Please run: sudo systemctl restart yaat")
+				fmt.Println("Please run: sudo systemctl restart etiquetta")
 				return
 			}
 		}
-		fmt.Println("YAAT restarted successfully!")
+		fmt.Println("Etiquetta restarted successfully!")
 		return
 	}
 
 	// Fallback for non-systemd systems
-	fmt.Println("Please restart YAAT manually to use the new version.")
+	fmt.Println("Please restart Etiquetta manually to use the new version.")
 }

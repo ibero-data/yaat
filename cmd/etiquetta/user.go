@@ -13,14 +13,14 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/yaat/yaat-/internal/auth"
-	"github.com/yaat/yaat-/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/database"
 )
 
 var userCmd = &cobra.Command{
 	Use:   "user",
 	Short: "Manage users",
-	Long:  `Commands for managing YAAT  users.`,
+	Long:  `Commands for managing Etiquetta users.`,
 }
 
 var userCreateCmd = &cobra.Command{
@@ -55,7 +55,7 @@ func init() {
 }
 
 func runUserCreate(cmd *cobra.Command, args []string) {
-	db, err := database.New(dataDir + "/yaat.db")
+	db, err := database.New(dataDir + "/etiquetta.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -135,7 +135,7 @@ func runUserCreate(cmd *cobra.Command, args []string) {
 }
 
 func runUserList(cmd *cobra.Command, args []string) {
-	db, err := database.New(dataDir + "/yaat.db")
+	db, err := database.New(dataDir + "/etiquetta.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -172,7 +172,7 @@ func runUserList(cmd *cobra.Command, args []string) {
 func runUserDelete(cmd *cobra.Command, args []string) {
 	email := args[0]
 
-	db, err := database.New(dataDir + "/yaat.db")
+	db, err := database.New(dataDir + "/etiquetta.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}

@@ -15,7 +15,9 @@ import {
   GeoIPSettings,
   AccountSettings,
   UsersSettings,
+  ConsentSettings,
 } from './pages/settings'
+import { TagManager, TagManagerContainer } from './pages/tag-manager'
 import { Explorer } from './pages/Explorer'
 import { Login } from './pages/Login'
 import { BotAnalysis } from './pages/BotAnalysis'
@@ -32,6 +34,8 @@ import {
   Monitor,
   Bot,
   ShieldAlert,
+  Shield,
+  Tags,
   Users as UsersIcon,
   ChevronsUpDown,
   ChevronRight,
@@ -235,12 +239,14 @@ function AppSidebar() {
     { path: '/bots', name: 'Bot Analysis', icon: Bot },
     { path: '/fraud', name: 'Ad Fraud', icon: ShieldAlert, pro: 'ad_fraud' },
     { path: '/explorer', name: 'Data Explorer', icon: Database, adminOnly: true },
+    { path: '/tag-manager', name: 'Tag Manager', icon: Tags, pro: 'tag_manager' },
   ]
 
   const settingsItems = [
     { path: '/settings/domains', name: 'Domains', icon: Globe },
     { path: '/settings/email', name: 'Email', icon: Mail, adminOnly: true },
     { path: '/settings/geoip', name: 'GeoIP', icon: MapPin, adminOnly: true },
+    { path: '/settings/consent', name: 'Consent', icon: Shield, pro: 'consent' },
     { path: '/settings/account', name: 'Account', icon: User },
     { path: '/settings/users', name: 'Users', icon: UsersIcon, adminOnly: true, pro: 'multi_user' },
     { path: '/settings/license', name: 'License', icon: Key },
@@ -257,10 +263,10 @@ function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/">
-                <img src="/logo.png" alt="YAAT" className="h-8 w-8 shrink-0" />
+                <img src="/favicon-pixellated.png" alt="Etiquetta" className="h-8 w-8 shrink-0" />
                 {!isCollapsed && (
                   <div className="flex flex-col items-start">
-                    <span className="font-bold">YAAT</span>
+                    <span className="font-bold">Etiquetta</span>
                     <span className="text-xs text-muted-foreground">Analytics</span>
                   </div>
                 )}
@@ -374,7 +380,7 @@ function AppLayout() {
       <SidebarInset>
         <header className="flex h-12 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger />
-          <span className="font-semibold">YAAT</span>
+          <span className="font-semibold">Etiquetta</span>
         </header>
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="max-w-[1800px] mx-auto w-full h-full overflow-hidden">
@@ -390,6 +396,9 @@ function AppLayout() {
               <Route path="/settings/geoip" element={<GeoIPSettings />} />
               <Route path="/settings/account" element={<AccountSettings />} />
               <Route path="/settings/users" element={<UsersSettings />} />
+              <Route path="/settings/consent" element={<ConsentSettings />} />
+              <Route path="/tag-manager" element={<TagManager />} />
+              <Route path="/tag-manager/:containerId" element={<TagManagerContainer />} />
               <Route path="/settings/license" element={
                 <div className="p-6 max-w-4xl mx-auto">
                   <div className="mb-6">
@@ -409,7 +418,7 @@ function AppLayout() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="yaat-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="etiquetta-ui-theme">
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>

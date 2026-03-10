@@ -115,9 +115,10 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Set connection pool settings
-	conn.SetMaxOpenConns(1) // SQLite works best with single writer
-	conn.SetMaxIdleConns(1)
+	// SQLite with WAL allows concurrent reads + single writer.
+	// We need more than 1 conn so reads don't block behind writes.
+	conn.SetMaxOpenConns(4)
+	conn.SetMaxIdleConns(4)
 	conn.SetConnMaxLifetime(0)
 
 	// Test connection

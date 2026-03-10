@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/yaat/yaat-/internal/bot"
+	"github.com/caioricciuti/etiquetta/internal/bot"
 )
 
 // Enricher provides event enrichment

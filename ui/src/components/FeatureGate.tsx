@@ -34,7 +34,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
           </p>
         </div>
         <a
-          href="https://yaat.dev/pricing"
+          href="https://etiquetta.com/pricing"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-2 inline-flex items-center px-4 py-2 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"

@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/yaat/yaat-/internal/adfraud"
+	"github.com/caioricciuti/etiquetta/internal/adfraud"
 )
 
 // GetStatsVitals returns web vitals (Pro feature)

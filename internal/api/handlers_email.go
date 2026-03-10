@@ -8,7 +8,7 @@ import (
 	"net/smtp"
 	"strconv"
 
-	"github.com/yaat/yaat-/internal/settings"
+	"github.com/caioricciuti/etiquetta/internal/settings"
 )
 
 // EmailSettings represents the email configuration

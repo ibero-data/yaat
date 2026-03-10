@@ -97,7 +97,7 @@ func (db *DB) ExecuteExplorerQuery(query string) (*QueryResult, error) {
 	}
 
 	// Scan rows
-	var resultRows [][]interface{}
+	resultRows := make([][]interface{}, 0)
 	rowCount := 0
 
 	for rows.Next() {

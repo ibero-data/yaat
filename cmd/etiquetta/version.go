@@ -11,7 +11,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("YAAT  %s\n", Version)
+		fmt.Printf("Etiquetta %s\n", Version)
 		fmt.Printf("  Commit:     %s\n", Commit)
 		fmt.Printf("  Built:      %s\n", BuildDate)
 		fmt.Printf("  Go version: %s\n", runtime.Version())

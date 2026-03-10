@@ -121,7 +121,7 @@ export function DomainsSettings() {
         </CardHeader>
         <CardContent>
           <pre className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-sm overflow-x-auto">
-            <code>{`<!-- YAAT Analytics -->
+            <code>{`<!-- Etiquetta Analytics -->
 <script defer data-site="YOUR_SITE_ID" src="${window.location.origin}/s.js"></script>`}</code>
           </pre>
           <p className="text-xs text-muted-foreground mt-3">

@@ -45,7 +45,7 @@ export const useDateRangeStore = create<DateRangeState>()(
       setPreset: (preset) => set({ selectedPreset: preset }),
     }),
     {
-      name: 'yaat-date-range',
+      name: 'etiquetta-date-range',
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name)

@@ -52,7 +52,7 @@ export function LicenseSettings() {
       <div>
         <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">License</h2>
         <p className="text-sm text-zinc-500">
-          Manage your YAAT  license to unlock premium features.
+          Manage your Etiquetta license to unlock premium features.
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export function LicenseSettings() {
             Get performance monitoring, error tracking, custom events, data export, and more.
           </p>
           <a
-            href="https://yaat.dev/pricing"
+            href="https://etiquetta.com/pricing"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center px-4 py-2 bg-white text-zinc-900 rounded-md text-sm font-medium hover:bg-zinc-100"

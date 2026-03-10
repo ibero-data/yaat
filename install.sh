@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # ============================================
-# YAAT  Installer
+# Etiquetta Installer
 # ============================================
 
-VERSION="${YAAT_VERSION:-latest}"
-INSTALL_DIR="${YAAT_INSTALL_DIR:-/usr/local/bin}"
-DATA_DIR="${YAAT_DATA_DIR:-/var/lib/yaat}"
-WITH_SYSTEMD="${YAAT_SYSTEMD:-false}"
-GITHUB_REPO="ibero-data/yaat"
+VERSION="${ETIQUETTA_VERSION:-latest}"
+INSTALL_DIR="${ETIQUETTA_INSTALL_DIR:-/usr/local/bin}"
+DATA_DIR="${ETIQUETTA_DATA_DIR:-/var/lib/etiquetta}"
+WITH_SYSTEMD="${ETIQUETTA_SYSTEMD:-false}"
+GITHUB_REPO="caioricciuti/etiquetta"
 
 # Colors
 RED='\033[0;31m'
@@ -29,7 +29,7 @@ for arg in "$@"; do
     --with-systemd) WITH_SYSTEMD=true ;;
     --version=*) VERSION="${arg#*=}" ;;
     --help)
-      echo "YAAT  Installer"
+      echo "Etiquetta Installer"
       echo ""
       echo "Usage: install.sh [OPTIONS]"
       echo ""
@@ -38,8 +38,8 @@ for arg in "$@"; do
       echo "  --version=TAG     Install specific version (default: latest)"
       echo ""
       echo "Environment variables:"
-      echo "  YAAT_INSTALL_DIR  Binary location (default: /usr/local/bin)"
-      echo "  YAAT_DATA_DIR     Data directory (default: /var/lib/yaat)"
+      echo "  ETIQUETTA_INSTALL_DIR  Binary location (default: /usr/local/bin)"
+      echo "  ETIQUETTA_DATA_DIR     Data directory (default: /var/lib/etiquetta)"
       exit 0
       ;;
   esac
@@ -74,7 +74,7 @@ get_latest_version() {
 }
 
 download_binary() {
-  BINARY_NAME="yaat-${PLATFORM}"
+  BINARY_NAME="etiquetta-${PLATFORM}"
   DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}/${BINARY_NAME}"
 
   step "Downloading $BINARY_NAME..."
@@ -90,15 +90,15 @@ download_binary() {
 }
 
 install_binary() {
-  step "Installing to $INSTALL_DIR/yaat..."
+  step "Installing to $INSTALL_DIR/etiquetta..."
 
   if [ -w "$INSTALL_DIR" ]; then
-    mv "$TMP_FILE" "$INSTALL_DIR/yaat"
+    mv "$TMP_FILE" "$INSTALL_DIR/etiquetta"
   else
-    sudo mv "$TMP_FILE" "$INSTALL_DIR/yaat"
+    sudo mv "$TMP_FILE" "$INSTALL_DIR/etiquetta"
   fi
 
-  info "Binary installed: $INSTALL_DIR/yaat"
+  info "Binary installed: $INSTALL_DIR/etiquetta"
 }
 
 setup_systemd() {
@@ -107,35 +107,35 @@ setup_systemd() {
 
   step "Setting up systemd service..."
 
-  # Create yaat user if not exists
-  if ! id -u yaat &>/dev/null; then
-    sudo useradd --system --no-create-home --shell /usr/sbin/nologin yaat
-    info "Created system user: yaat"
+  # Create etiquetta user if not exists
+  if ! id -u etiquetta &>/dev/null; then
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin etiquetta
+    info "Created system user: etiquetta"
   fi
 
   # Create data directory
   sudo mkdir -p "$DATA_DIR"
-  sudo chown yaat:yaat "$DATA_DIR"
+  sudo chown etiquetta:etiquetta "$DATA_DIR"
   info "Created data directory: $DATA_DIR"
 
   # Create systemd service
-  sudo tee /etc/systemd/system/yaat.service > /dev/null << EOF
+  sudo tee /etc/systemd/system/etiquetta.service > /dev/null << EOF
 [Unit]
-Description=YAAT  Analytics
+Description=Etiquetta Analytics
 After=network.target
 
 [Service]
 Type=simple
-User=yaat
-Group=yaat
+User=etiquetta
+Group=etiquetta
 WorkingDirectory=$DATA_DIR
-ExecStart=$INSTALL_DIR/yaat serve
+ExecStart=$INSTALL_DIR/etiquetta serve
 Restart=always
 RestartSec=5
 
 # Environment
-Environment=YAAT_DATA_DIR=$DATA_DIR
-Environment=YAAT_PORT=3456
+Environment=ETIQUETTA_DATA_DIR=$DATA_DIR
+Environment=ETIQUETTA_PORT=3456
 
 # Security hardening
 NoNewPrivileges=true
@@ -148,14 +148,14 @@ WantedBy=multi-user.target
 EOF
 
   sudo systemctl daemon-reload
-  sudo systemctl enable yaat
+  sudo systemctl enable etiquetta
   info "Systemd service installed and enabled"
 }
 
 print_success() {
   echo ""
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${GREEN}  YAAT  installed successfully!${NC}"
+  echo -e "${GREEN}  Etiquetta installed successfully!${NC}"
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo "Next steps:"
@@ -163,19 +163,19 @@ print_success() {
 
   if [ "$WITH_SYSTEMD" = "true" ] && [ "$OS" = "linux" ]; then
     echo "  # Run setup wizard"
-    echo "  sudo -u yaat $INSTALL_DIR/yaat init --data=$DATA_DIR"
+    echo "  sudo -u etiquetta $INSTALL_DIR/etiquetta init --data=$DATA_DIR"
     echo ""
     echo "  # Start the service"
-    echo "  sudo systemctl start yaat"
+    echo "  sudo systemctl start etiquetta"
     echo ""
     echo "  # View logs"
-    echo "  sudo journalctl -u yaat -f"
+    echo "  sudo journalctl -u etiquetta -f"
   else
     echo "  # Run setup wizard"
-    echo "  yaat init"
+    echo "  etiquetta init"
     echo ""
     echo "  # Start the server"
-    echo "  yaat serve"
+    echo "  etiquetta serve"
   fi
 
   echo ""
@@ -186,7 +186,7 @@ print_success() {
 main() {
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  YAAT  Installer"
+  echo "  Etiquetta Installer"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 

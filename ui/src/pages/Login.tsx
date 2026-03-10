@@ -104,9 +104,9 @@ export function Login() {
       <div className="w-full lg:w-[45%] flex flex-col p-8 lg:p-12">
         {/* Logo - Top */}
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="YAAT" className="h-10 w-10" />
+          <img src="/favicon-pixellated.png" alt="Etiquetta" className="h-10 w-10" />
           <div>
-            <h1 className="text-lg font-semibold text-foreground">YAAT </h1>
+            <h1 className="text-lg font-semibold text-foreground">Etiquetta</h1>
             <p className="text-xs text-muted-foreground">Web Analytics</p>
           </div>
         </div>
@@ -191,7 +191,7 @@ export function Login() {
               <>
                 <div className="mb-8">
                   <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Welcome to YAAT 
+                    Welcome to Etiquetta
                   </h2>
                   <p className="text-muted-foreground mt-1">
                     Set up your admin account to get started
@@ -308,7 +308,7 @@ export function Login() {
           <div className="max-w-lg">
             {/* Logo */}
             <div className="flex justify-center mb-8">
-              <img src="/logo.png" alt="YAAT" className="h-20 w-20" />
+              <img src="/logo-complete.png" alt="Etiquetta" className="h-12" />
             </div>
 
             {/* Headlines */}
@@ -377,7 +377,7 @@ export function Login() {
         {/* Footer */}
         <div className="relative z-10 px-12 xl:px-16 pb-8">
           <div className="flex items-center justify-center text-xs text-muted-foreground">
-            <span>YAAT  v0.1.0</span>
+            <span>Etiquetta v0.1.0</span>
           </div>
         </div>
       </div>

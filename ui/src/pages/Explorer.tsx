@@ -96,7 +96,7 @@ const SQL_KEYWORDS = [
   'ELSE', 'END', 'UNION', 'ALL', 'EXISTS', 'COALESCE', 'CAST', 'WITH',
 ]
 
-const QUERY_HISTORY_KEY = 'yaat-explorer-history'
+const QUERY_HISTORY_KEY = 'etiquetta-explorer-history'
 const MAX_HISTORY = 10
 
 const TYPE_ICONS: Record<string, typeof Hash> = {
@@ -346,7 +346,7 @@ export function Explorer() {
         return /[,"\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
       }).join(',')
     ).join('\n')
-    downloadFile(`${headers}\n${rows}`, 'text/csv', `yaat-export-${new Date().toISOString().slice(0, 19)}.csv`)
+    downloadFile(`${headers}\n${rows}`, 'text/csv', `etiquetta-export-${new Date().toISOString().slice(0, 19)}.csv`)
   }
 
   const exportToJSON = () => {
@@ -354,7 +354,7 @@ export function Explorer() {
     const data = result.rows.map(row =>
       Object.fromEntries(result.columns.map((col, i) => [col, row[i]]))
     )
-    downloadFile(JSON.stringify(data, null, 2), 'application/json', `yaat-export-${new Date().toISOString().slice(0, 19)}.json`)
+    downloadFile(JSON.stringify(data, null, 2), 'application/json', `etiquetta-export-${new Date().toISOString().slice(0, 19)}.json`)
   }
 
   const copyToClipboard = async () => {

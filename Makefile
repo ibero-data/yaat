@@ -11,15 +11,15 @@ all: ui build
 
 # Build the Go binary
 build:
-	go build $(LDFLAGS) -o bin/yaat ./cmd/yaat
+	go build $(LDFLAGS) -o bin/etiquetta ./cmd/etiquetta
 
 # Run the server
 run: build
-	./bin/yaat serve
+	./bin/etiquetta serve
 
 # Initialize the database and create admin user
 init: build
-	./bin/yaat init
+	./bin/etiquetta init
 
 # Development mode with hot reload (requires air)
 dev:
@@ -40,7 +40,7 @@ test:
 
 # Install to /usr/local/bin
 install: all
-	cp bin/yaat /usr/local/bin/yaat
+	cp bin/etiquetta /usr/local/bin/etiquetta
 
 # Generate license keypair
 keygen:
@@ -56,21 +56,21 @@ license-enterprise:
 
 # Download GeoIP database (requires credentials in settings)
 geoip:
-	./bin/yaat geoip download
+	./bin/etiquetta geoip download
 
 # Build release binaries for all platforms
 release: ui
 	@mkdir -p dist
 	@echo "Building release binaries..."
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/yaat-linux-amd64 ./cmd/yaat
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/yaat-linux-arm64 ./cmd/yaat
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/yaat-darwin-amd64 ./cmd/yaat
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/yaat-darwin-arm64 ./cmd/yaat
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/etiquetta-linux-amd64 ./cmd/etiquetta
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/etiquetta-linux-arm64 ./cmd/etiquetta
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/etiquetta-darwin-amd64 ./cmd/etiquetta
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/etiquetta-darwin-arm64 ./cmd/etiquetta
 	@echo "Release binaries created in dist/"
 
 # Show help
 help:
-	@echo "YAAT  Makefile"
+	@echo "Etiquetta Makefile"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make all       - Build UI and binary"
@@ -86,9 +86,9 @@ help:
 	@echo "  make geoip     - Download GeoIP database"
 	@echo ""
 	@echo "CLI Commands:"
-	@echo "  yaat serve     - Start the server"
-	@echo "  yaat init      - Interactive setup wizard"
-	@echo "  yaat version   - Show version info"
-	@echo "  yaat user list - List users"
-	@echo "  yaat user create - Create a user"
-	@echo "  yaat geoip download - Download GeoIP database"
+	@echo "  etiquetta serve     - Start the server"
+	@echo "  etiquetta init      - Interactive setup wizard"
+	@echo "  etiquetta version   - Show version info"
+	@echo "  etiquetta user list - List users"
+	@echo "  etiquetta user create - Create a user"
+	@echo "  etiquetta geoip download - Download GeoIP database"

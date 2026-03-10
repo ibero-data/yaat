@@ -155,7 +155,7 @@ function LicenseBanner() {
             </p>
           </div>
           <Button variant="secondary" size="sm" asChild>
-            <a href="https://yaat.dev/pricing" target="_blank" rel="noopener noreferrer">
+            <a href="https://etiquetta.com/pricing" target="_blank" rel="noopener noreferrer">
               View Plans
               <ExternalLink className="h-3 w-3 ml-1" />
             </a>

@@ -54,3 +54,5 @@ cmd/licensegen
 generated_licenses/
 
 /gen_license.md
+
+CLAUDE.md

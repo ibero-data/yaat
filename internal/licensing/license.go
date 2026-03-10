@@ -21,6 +21,8 @@ const (
 	FeatureWhiteLabel    = "white_label"
 	FeatureAdFraud       = "ad_fraud"
 	FeatureBotDetection  = "bot_detection"
+	FeatureConsent       = "consent"
+	FeatureTagManager    = "tag_manager"
 )
 
 // License represents a validated license
@@ -86,6 +88,8 @@ func DefaultFeatures(tier string) map[string]bool {
 			FeatureWhiteLabel:    true,
 			FeatureAdFraud:       true,
 			FeatureBotDetection:  true,
+			FeatureConsent:       true,
+			FeatureTagManager:    true,
 		}
 	case TierPro:
 		return map[string]bool{
@@ -99,6 +103,8 @@ func DefaultFeatures(tier string) map[string]bool {
 			FeatureWhiteLabel:    false,
 			FeatureAdFraud:       true,
 			FeatureBotDetection:  true,
+			FeatureConsent:       true,
+			FeatureTagManager:    true,
 		}
 	default: // community
 		return map[string]bool{
@@ -112,6 +118,8 @@ func DefaultFeatures(tier string) map[string]bool {
 			FeatureWhiteLabel:    false,
 			FeatureAdFraud:       false,
 			FeatureBotDetection:  true, // Basic bot detection available in community
+			FeatureConsent:       false,
+			FeatureTagManager:    false,
 		}
 	}
 }

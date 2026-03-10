@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/yaat/yaat-/internal/api"
+	"github.com/caioricciuti/etiquetta/internal/api"
 )
 
 var (
@@ -20,9 +20,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "yaat",
-	Short: "YAAT  - Privacy-first web analytics",
-	Long: `YAAT  is a self-hosted, privacy-focused web analytics platform.
+	Use:   "etiquetta",
+	Short: "Etiquetta - Privacy-first web analytics",
+	Long: `Etiquetta is a self-hosted, privacy-focused web analytics platform.
 
 It provides:
   - Pageview and event tracking
@@ -32,10 +32,10 @@ It provides:
   - Multi-domain support
 
 Get started:
-  yaat init     # Interactive setup wizard
-  yaat serve    # Start the server
+  etiquetta init     # Interactive setup wizard
+  etiquetta serve    # Start the server
 
-Documentation: https://github.com/yaat/yaat-`,
+Documentation: https://github.com/caioricciuti/etiquetta`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Default behavior: run serve command
 		serveCmd.Run(cmd, args)

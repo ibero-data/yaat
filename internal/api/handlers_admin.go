@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/yaat/yaat-/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/auth"
 )
 
 // ListUsers returns all users
@@ -332,7 +332,7 @@ func (h *Handlers) GetDomainSnippet(w http.ResponseWriter, r *http.Request) {
 		scheme = "http"
 	}
 
-	snippet := fmt.Sprintf(`<!-- YAAT  Analytics -->
+	snippet := fmt.Sprintf(`<!-- Etiquetta Analytics -->
 <script defer data-site="%s" src="%s://%s/s.js"></script>`, siteID, scheme, host)
 
 	writeJSON(w, http.StatusOK, map[string]string{

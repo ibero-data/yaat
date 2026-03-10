@@ -26,6 +26,22 @@ export default defineConfig({
         target: 'http://localhost:3456',
         changeOrigin: true,
       },
+      '/c.js': {
+        target: 'http://localhost:3456',
+        changeOrigin: true,
+      },
+      '/consent': {
+        target: 'http://localhost:3456',
+        changeOrigin: true,
+      },
+      '/tm': {
+        target: 'http://localhost:3456',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:3456',
+        changeOrigin: true,
+      },
     },
   },
   build: {

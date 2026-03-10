@@ -198,3 +198,122 @@ export const defaultLicense: License = {
   expires_at: null,
   licensee: '',
 }
+
+// Consent Management types
+export type ConsentCategoryId = 'necessary' | 'analytics' | 'marketing' | 'preferences' | string
+
+export interface ConsentCategory {
+  id: ConsentCategoryId
+  label: string
+  description: string
+  required: boolean
+  default_enabled: boolean
+}
+
+export interface ConsentAppearance {
+  style: 'bar' | 'popup' | 'modal'
+  position: 'top' | 'bottom' | 'bottom-left' | 'bottom-right' | 'center'
+  bg_color: string
+  text_color: string
+  btn_bg_color: string
+  btn_text_color: string
+  show_reject_all: boolean
+}
+
+export interface ConsentConfig {
+  id: string
+  domain_id: string
+  version: number
+  is_active: boolean
+  categories: ConsentCategory[]
+  appearance: ConsentAppearance
+  translations: Record<string, Record<string, string>>
+  cookie_name: string
+  cookie_expiry_days: number
+  auto_language: boolean
+  geo_targeting: string[]
+  created_at: number
+  updated_at: number
+}
+
+export interface ConsentRecord {
+  id: string
+  domain_id: string
+  visitor_hash: string
+  categories: Record<string, boolean>
+  config_version: number
+  action: 'accept_all' | 'reject_all' | 'custom'
+  user_agent: string
+  geo_country: string
+  timestamp: number
+}
+
+export interface ConsentAnalytics {
+  total_records: number
+  accept_all_count: number
+  reject_all_count: number
+  custom_count: number
+  consent_rate: number
+}
+
+// Tag Manager types
+export type TagType = 'custom_html' | 'ga4' | 'meta_pixel' | 'google_ads' | 'linkedin' | 'tiktok'
+export type TriggerType = 'page_load' | 'dom_ready' | 'click_all' | 'click_specific' | 'scroll_depth' | 'custom_event' | 'timer' | 'history_change' | 'form_submit'
+export type VariableType = 'data_layer' | 'url_param' | 'cookie' | 'dom_element' | 'js_variable' | 'constant' | 'referrer' | 'page_url' | 'page_path' | 'page_hostname'
+
+export interface TMContainer {
+  id: string
+  domain_id: string
+  name: string
+  domain_name?: string
+  domain?: string
+  published_version: number
+  draft_version: number
+  published_at: number | null
+  published_by: string | null
+  created_at: number
+  updated_at: number
+}
+
+export interface TMTag {
+  id: string
+  container_id: string
+  name: string
+  tag_type: TagType
+  config: Record<string, unknown>
+  consent_category: ConsentCategoryId
+  priority: number
+  is_enabled: boolean
+  trigger_ids: string[]
+  version: number
+  created_at: number
+  updated_at: number
+}
+
+export interface TMTrigger {
+  id: string
+  container_id: string
+  name: string
+  trigger_type: TriggerType
+  config: Record<string, unknown>
+  created_at: number
+  updated_at: number
+}
+
+export interface TMVariable {
+  id: string
+  container_id: string
+  name: string
+  variable_type: VariableType
+  config: Record<string, unknown>
+  created_at: number
+  updated_at: number
+}
+
+export interface TMSnapshot {
+  id: string
+  container_id: string
+  version: number
+  published_by: string
+  published_at: number
+}

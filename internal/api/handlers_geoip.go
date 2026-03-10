@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/yaat/yaat-/internal/geoip"
-	"github.com/yaat/yaat-/internal/settings"
+	"github.com/caioricciuti/etiquetta/internal/geoip"
+	"github.com/caioricciuti/etiquetta/internal/settings"
 )
 
 // GeoIPSettings represents the GeoIP configuration

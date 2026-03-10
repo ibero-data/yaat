@@ -12,16 +12,19 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/yaat/yaat-/internal/auth"
-	"github.com/yaat/yaat-/internal/config"
-	"github.com/yaat/yaat-/internal/database"
-	"github.com/yaat/yaat-/internal/enrichment"
-	"github.com/yaat/yaat-/internal/identification"
-	"github.com/yaat/yaat-/internal/licensing"
+	"github.com/caioricciuti/etiquetta/internal/auth"
+	"github.com/caioricciuti/etiquetta/internal/config"
+	"github.com/caioricciuti/etiquetta/internal/database"
+	"github.com/caioricciuti/etiquetta/internal/enrichment"
+	"github.com/caioricciuti/etiquetta/internal/identification"
+	"github.com/caioricciuti/etiquetta/internal/licensing"
 )
 
 //go:embed tracker.js
 var trackerJS embed.FS
+
+//go:embed consent.js
+var consentJS embed.FS
 
 // NewRouter creates the HTTP router
 func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *licensing.Manager, cfg *config.Config, uiFS fs.FS) http.Handler {
@@ -34,8 +37,18 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 	r.Use(middleware.Compress(5))
 
 	// CORS - allow credentials for auth cookies
+	// Use AllowOriginFunc instead of AllowedOrigins to reflect the actual
+	// Origin header. AllowedOrigins: ["*"] sends a literal "*" which browsers
+	// reject when credentials are included (sendBeacon, fetch with cookies).
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.AllowedOrigins,
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			for _, o := range cfg.AllowedOrigins {
+				if o == "*" || o == origin {
+					return true
+				}
+			}
+			return false
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Content-Type", "X-Requested-With", "Authorization"},
 		ExposedHeaders:   []string{"Link"},
@@ -46,8 +59,8 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 	// Create auth service
 	// secureCookie should only be true when running with HTTPS directly
 	// When behind a reverse proxy (nginx), the proxy handles HTTPS
-	// Check YAAT_SECURE_COOKIES env var, default to false for proxy setups
-	secureCookie := os.Getenv("YAAT_SECURE_COOKIES") == "true"
+	// Check ETIQUETTA_SECURE_COOKIES env var, default to false for proxy setups
+	secureCookie := os.Getenv("ETIQUETTA_SECURE_COOKIES") == "true"
 	authService := auth.New(cfg.SecretKey, secureCookie)
 	authMiddleware := auth.NewMiddleware(authService)
 
@@ -72,6 +85,16 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 
 	// Ingest endpoint (rate limited: 100 req/min/IP)
 	r.With(RateLimit(100, time.Minute)).Post("/i", h.Ingest)
+
+	// Consent banner script
+	r.Get("/c.js", h.ServeConsentScript)
+
+	// Consent public endpoints
+	r.Get("/consent/{siteId}/config", h.GetPublicConsentConfig)
+	r.With(RateLimit(60, time.Minute)).Post("/consent/{siteId}/record", h.RecordConsent)
+
+	// Tag Manager container script
+	r.Get("/tm/{siteId}.js", h.ServeContainerScript)
 
 	// Health check
 	r.Get("/health", h.Health)
@@ -183,6 +206,48 @@ func NewRouter(db *database.DB, enricher *enrichment.Enricher, licenseManager *l
 				r.Post("/campaigns", h.CreateCampaign)
 				r.Get("/campaigns/{id}/report", h.GetCampaignReport)
 				r.Delete("/campaigns/{id}", h.DeleteCampaign)
+			})
+
+			// Pro features - Consent Management
+			r.Group(func(r chi.Router) {
+				r.Use(licensing.RequireFeature(licenseManager, licensing.FeatureConsent))
+				r.Get("/consent/configs/{domainId}", h.GetConsentConfig)
+				r.Post("/consent/configs/{domainId}", h.SaveConsentConfig)
+				r.Get("/consent/configs/{domainId}/history", h.GetConsentConfigHistory)
+				r.Get("/consent/analytics/{domainId}", h.GetConsentAnalytics)
+				r.Get("/consent/records/{domainId}", h.GetConsentRecords)
+			})
+
+			// Pro features - Tag Manager
+			r.Group(func(r chi.Router) {
+				r.Use(licensing.RequireFeature(licenseManager, licensing.FeatureTagManager))
+				r.Get("/tagmanager/containers", h.ListContainers)
+				r.Post("/tagmanager/containers", h.CreateContainer)
+				r.Get("/tagmanager/containers/{id}", h.GetContainer)
+				r.Put("/tagmanager/containers/{id}", h.UpdateContainer)
+				r.Delete("/tagmanager/containers/{id}", h.DeleteContainer)
+				r.Post("/tagmanager/containers/{id}/publish", h.PublishContainer)
+				r.Get("/tagmanager/containers/{id}/versions", h.GetContainerVersions)
+				r.Post("/tagmanager/containers/{id}/rollback/{version}", h.RollbackContainer)
+
+				// Tag CRUD
+				r.Get("/tagmanager/containers/{cid}/tags", h.ListTags)
+				r.Post("/tagmanager/containers/{cid}/tags", h.CreateTag)
+				r.Get("/tagmanager/containers/{cid}/tags/{id}", h.GetTag)
+				r.Put("/tagmanager/containers/{cid}/tags/{id}", h.UpdateTag)
+				r.Delete("/tagmanager/containers/{cid}/tags/{id}", h.DeleteTag)
+
+				// Trigger CRUD
+				r.Get("/tagmanager/containers/{cid}/triggers", h.ListTriggers)
+				r.Post("/tagmanager/containers/{cid}/triggers", h.CreateTrigger)
+				r.Put("/tagmanager/containers/{cid}/triggers/{id}", h.UpdateTrigger)
+				r.Delete("/tagmanager/containers/{cid}/triggers/{id}", h.DeleteTrigger)
+
+				// Variable CRUD
+				r.Get("/tagmanager/containers/{cid}/variables", h.ListVariables)
+				r.Post("/tagmanager/containers/{cid}/variables", h.CreateVariable)
+				r.Put("/tagmanager/containers/{cid}/variables/{id}", h.UpdateVariable)
+				r.Delete("/tagmanager/containers/{cid}/variables/{id}", h.DeleteVariable)
 			})
 
 			// Admin only - User management

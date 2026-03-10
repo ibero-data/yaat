@@ -110,7 +110,12 @@ func (m *Manager) HasFeature(feature string) bool {
 		return features[feature]
 	}
 
-	return m.license.Features[feature]
+	if m.license.Features != nil {
+		if val, ok := m.license.Features[feature]; ok {
+			return val
+		}
+	}
+	return DefaultFeatures(m.license.Type)[feature]
 }
 
 // GetLimit returns a limit value (-1 for unlimited)
@@ -170,8 +175,12 @@ func (m *Manager) GetInfo() map[string]interface{} {
 
 	if m.license != nil {
 		tier = m.license.Type
-		features = m.license.Features
-		limits = m.license.Limits
+		features = DefaultFeatures(m.license.Type)
+		limits = DefaultLimits(m.license.Type)
+		// Override with license-specific limits if present
+		if m.license.Limits != nil {
+			limits = m.license.Limits
+		}
 		expiresAt = &m.license.ExpiresAt
 		licensee = m.license.Licensee
 	}
